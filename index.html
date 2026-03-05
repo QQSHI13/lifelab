@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conway's Game of Life</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+            background-color: #0d1117;
+            color: #c9d1d9;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        h1 {
+            color: #58a6ff;
+            margin-bottom: 20px;
+            font-size: 28px;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            max-width: 100%;
+        }
+
+        .stats {
+            display: flex;
+            gap: 30px;
+            background: #161b22;
+            padding: 12px 24px;
+            border-radius: 8px;
+            border: 1px solid #30363d;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #58a6ff;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #8b949e;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            align-items: center;
+            background: #161b22;
+            padding: 15px 20px;
+            border-radius: 8px;
+            border: 1px solid #30363d;
+        }
+
+        button {
+            background: #21262d;
+            color: #c9d1d9;
+            border: 1px solid #30363d;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            background: #30363d;
+            border-color: #8b949e;
+        }
+
+        button:active {
+            transform: translateY(1px);
+        }
+
+        button.primary {
+            background: #238636;
+            border-color: #238636;
+            color: #fff;
+        }
+
+        button.primary:hover {
+            background: #2ea043;
+        }
+
+        button.danger {
+            background: #da3633;
+            border-color: #da3633;
+            color: #fff;
+        }
+
+        button.danger:hover {
+            background: #f85149;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-left: 10px;
+        }
+
+        .slider-container label {
+            font-size: 12px;
+            color: #8b949e;
+            white-space: nowrap;
+        }
+
+        input[type="range"] {
+            width: 120px;
+            cursor: pointer;
+        }
+
+        #speedValue {
+            font-size: 12px;
+            color: #58a6ff;
+            min-width: 35px;
+        }
+
+        .patterns {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            background: #161b22;
+            padding: 15px 20px;
+            border-radius: 8px;
+            border: 1px solid #30363d;
+        }
+
+        .pattern-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .pattern-group-title {
+            font-size: 11px;
+            color: #8b949e;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 3px;
+        }
+
+        .pattern-buttons {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+
+        .pattern-btn {
+            padding: 6px 12px;
+            font-size: 12px;
+            background: #21262d;
+        }
+
+        .pattern-btn:hover {
+            background: #30363d;
+        }
+
+        .canvas-container {
+            position: relative;
+            border: 2px solid #30363d;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #010409;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+
+        #gridCanvas {
+            display: block;
+            cursor: crosshair;
+        }
+
+        .instructions {
+            text-align: center;
+            color: #8b949e;
+            font-size: 13px;
+            margin-top: 10px;
+        }
+
+        .share-container {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            background: #161b22;
+            padding: 10px 15px;
+            border-radius: 8px;
+            border: 1px solid #30363d;
+        }
+
+        #shareUrl {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            color: #c9d1d9;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            width: 300px;
+            font-family: monospace;
+        }
+
+        .generation-history {
+            max-height: 150px;
+            overflow-y: auto;
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 11px;
+            color: #8b949e;
+        }
+
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: #8b949e;
+        }
+
+        input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>☄️ Conway's Game of Life</h1>
+    
+    <div class="container">
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-value" id="generation">0</div>
+                <div class="stat-label">Generation</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="population">0</div>
+                <div class="stat-label">Population</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="maxPopulation">0</div>
+                <div class="stat-label">Max Population</div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button id="playPauseBtn" class="primary">▶ Play</button>
+            <button id="stepBtn">⏭ Step</button>
+            <button id="resetBtn" class="danger">↺ Reset</button>
+            <button id="clearBtn">🗑 Clear</button>
+            <button id="randomBtn">🎲 Random</button>
+            
+            <div class="slider-container">
+                <label>Speed:</label>
+                <input type="range" id="speedSlider" min="1" max="60" value="10">
+                <span id="speedValue">10 FPS</span>
+            </div>
+        </div>
+
+        <div class="patterns">
+            <div class="pattern-group">
+                <span class="pattern-group-title">Guns</span>
+                <div class="pattern-buttons">
+                    <button class="pattern-btn" data-pattern="gosper">Gosper Gun</button>
+                </div>
+            </div>
+            <div class="pattern-group">
+                <span class="pattern-group-title">Spaceships</span>
+                <div class="pattern-buttons">
+                    <button class="pattern-btn" data-pattern="glider">Glider</button>
+                    <button class="pattern-btn" data-pattern="lightweight">LWSS</button>
+                    <button class="pattern-btn" data-pattern="middleweight">MWSS</button>
+                    <button class="pattern-btn" data-pattern="heavyweight">HWSS</button>
+                </div>
+            </div>
+            <div class="pattern-group">
+                <span class="pattern-group-title">Oscillators</span>
+                <div class="pattern-buttons">
+                    <button class="pattern-btn" data-pattern="blinker">Blinker</button>
+                    <button class="pattern-btn" data-pattern="toad">Toad</button>
+                    <button class="pattern-btn" data-pattern="beacon">Beacon</button>
+                    <button class="pattern-btn" data-pattern="pulsar">Pulsar</button>
+                </div>
+            </div>
+            <div class="pattern-group">
+                <span class="pattern-group-title">Still Lifes</span>
+                <div class="pattern-buttons">
+                    <button class="pattern-btn" data-pattern="block">Block</button>
+                    <button class="pattern-btn" data-pattern="beehive">Beehive</button>
+                    <button class="pattern-btn" data-pattern="loaf">Loaf</button>
+                    <button class="pattern-btn" data-pattern="boat">Boat</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="canvas-container">
+            <canvas id="gridCanvas" width="800" height="600"></canvas>
+        </div>
+
+        <div class="instructions">
+            🖱️ Click/drag to draw cells • Right-click/drag to erase • Scroll to zoom (coming soon)
+        </div>
+
+        <div class="share-container">
+            <input type="text" id="shareUrl" readonly placeholder="Click 'Copy URL' to share pattern">
+            <button id="copyUrlBtn">📋 Copy URL</button>
+        </div>
+    </div>
+
+    <script>
+        // Game of Life Implementation
+        const canvas = document.getElementById('gridCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Grid configuration
+        const CELL_SIZE = 10;
+        const GRID_WIDTH = 80;
+        const GRID_HEIGHT = 60;
+        const COLORS = {
+            background: '#010409',
+            grid: '#21262d',
+            live: '#58a6ff',
+            liveGlow: 'rgba(88, 166, 255, 0.5)'
+        };
+
+        // Game state
+        let grid = new Uint8Array(GRID_WIDTH * GRID_HEIGHT);
+        let nextGrid = new Uint8Array(GRID_WIDTH * GRID_HEIGHT);
+        let isRunning = false;
+        let generation = 0;
+        let population = 0;
+        let maxPopulation = 0;
+        let animationId = null;
+        let lastFrameTime = 0;
+        let frameInterval = 100; // milliseconds between frames
+        
+        // Mouse state
+        let isDrawing = false;
+        let isErasing = false;
+
+        // Pattern definitions (relative coordinates from top-left)
+        const PATTERNS = {
+            // Gosper Glider Gun
+            gosper: [
+                [0, 4], [0, 5], [1, 4], [1, 5], // Block
+                [10, 4], [10, 5], [10, 6], [11, 3], [11, 7], [12, 2], [12, 8], [13, 2], [13, 8], [14, 5], 
+                [15, 3], [15, 7], [16, 4], [16, 5], [16, 6], [17, 5],
+                [20, 2], [20, 3], [20, 4], [21, 2], [21, 3], [21, 4], [22, 1], [22, 5], [24, 0], [24, 1], [24, 5], [24, 6],
+                [34, 2], [34, 3], [35, 2], [35, 3]
+            ],
+            // Glider
+            glider: [
+                [1, 0], [2, 1], [0, 2], [1, 2], [2, 2]
+            ],
+            // Lightweight Spaceship (LWSS)
+            lightweight: [
+                [0, 1], [3, 1], [4, 2], [0, 3], [4, 3], [1, 4], [2, 4], [3, 4], [4, 4]
+            ],
+            // Middleweight Spaceship (MWSS)
+            middleweight: [
+                [1, 0], [2, 0], [3, 0], [4, 0], [5, 0], [0, 1], [5, 1], [5, 2], [0, 3], [4, 3], [2, 4]
+            ],
+            // Heavyweight Spaceship (HWSS)
+            heavyweight: [
+                [1, 0], [2, 0], [3, 0], [4, 0], [5, 0], [6, 0], [0, 1], [6, 1], [6, 2], [0, 3], [5, 3], [2, 4]
+            ],
+            // Blinker (period 2)
+            blinker: [
+                [0, 1], [1, 1], [2, 1]
+            ],
+            // Toad (period 2)
+            toad: [
+                [1, 1], [2, 1], [3, 1], [0, 2], [1, 2], [2, 2]
+            ],
+            // Beacon (period 2)
+            beacon: [
+                [0, 0], [1, 0], [0, 1], [3, 2], [2, 3], [3, 3]
+            ],
+            // Pulsar (period 3)
+            pulsar: [
+                [2, 0], [3, 0], [4, 0], [8, 0], [9, 0], [10, 0],
+                [0, 2], [5, 2], [7, 2], [12, 2],
+                [0, 3], [5, 3], [7, 3], [12, 3],
+                [0, 4], [5, 4], [7, 4], [12, 4],
+                [2, 5], [3, 5], [4, 5], [8, 5], [9, 5], [10, 5],
+                [2, 7], [3, 7], [4, 7], [8, 7], [9, 7], [10, 7],
+                [0, 8], [5, 8], [7, 8], [12, 8],
+                [0, 9], [5, 9], [7, 9], [12, 9],
+                [0, 10], [5, 10], [7, 10], [12, 10],
+                [2, 12], [3, 12], [4, 12], [8, 12], [9, 12], [10, 12]
+            ],
+            // Block
+            block: [
+                [0, 0], [1, 0], [0, 1], [1, 1]
+            ],
+            // Beehive
+            beehive: [
+                [1, 0], [2, 0], [0, 1], [3, 1], [1, 2], [2, 2]
+            ],
+            // Loaf
+            loaf: [
+                [1, 0], [2, 0], [0, 1], [3, 1], [1, 2], [3, 2], [2, 3]
+            ],
+            // Boat
+            boat: [
+                [0, 0], [1, 0], [0, 1], [2, 1], [1, 2]
+            ]
+        };
+
+        // Initialize
+        function init() {
+            loadFromURL();
+            render();
+            updateStats();
+        }
+
+        // Get cell index with wrap-around (toroidal)
+        function getIndex(x, y) {
+            const wrappedX = ((x % GRID_WIDTH) + GRID_WIDTH) % GRID_WIDTH;
+            const wrappedY = ((y % GRID_HEIGHT) + GRID_HEIGHT) % GRID_HEIGHT;
+            return wrappedY * GRID_WIDTH + wrappedX;
+        }
+
+        // Get cell state
+        function getCell(x, y) {
+            return grid[getIndex(x, y)];
+        }
+
+        // Set cell state
+        function setCell(x, y, value) {
+            grid[getIndex(x, y)] = value;
+        }
+
+        // Count neighbors with wrap-around
+        function countNeighbors(x, y) {
+            let count = 0;
+            for (let dy = -1; dy <= 1; dy++) {
+                for (let dx = -1; dx <= 1; dx++) {
+                    if (dx === 0 && dy === 0) continue;
+                    count += getCell(x + dx, y + dy);
+                }
+            }
+            return count;
+        }
+
+        // Compute next generation
+        function step() {
+            population = 0;
+            
+            for (let y = 0; y < GRID_HEIGHT; y++) {
+                for (let x = 0; x < GRID_WIDTH; x++) {
+                    const neighbors = countNeighbors(x, y);
+                    const current = getCell(x, y);
+                    const idx = y * GRID_WIDTH + x;
+                    
+                    if (current === 1) {
+                        // Live cell: survives with 2 or 3 neighbors
+                        nextGrid[idx] = (neighbors === 2 || neighbors === 3) ? 1 : 0;
+                    } else {
+                        // Dead cell: born with exactly 3 neighbors
+                        nextGrid[idx] = (neighbors === 3) ? 1 : 0;
+                    }
+                    
+                    population += nextGrid[idx];
+                }
+            }
+            
+            // Swap grids
+            [grid, nextGrid] = [nextGrid, grid];
+            
+            generation++;
+            if (population > maxPopulation) {
+                maxPopulation = population;
+            }
+            
+            updateStats();
+            updateShareURL();
+        }
+
+        // Render grid
+        function render() {
+            // Clear canvas
+            ctx.fillStyle = COLORS.background;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw grid lines
+            ctx.strokeStyle = COLORS.grid;
+            ctx.lineWidth = 0.5;
+            
+            ctx.beginPath();
+            for (let x = 0; x <= GRID_WIDTH; x++) {
+                ctx.moveTo(x * CELL_SIZE, 0);
+                ctx.lineTo(x * CELL_SIZE, GRID_HEIGHT * CELL_SIZE);
+            }
+            for (let y = 0; y <= GRID_HEIGHT; y++) {
+                ctx.moveTo(0, y * CELL_SIZE);
+                ctx.lineTo(GRID_WIDTH * CELL_SIZE, y * CELL_SIZE);
+            }
+            ctx.stroke();
+            
+            // Draw live cells
+            ctx.fillStyle = COLORS.live;
+            for (let y = 0; y < GRID_HEIGHT; y++) {
+                for (let x = 0; x < GRID_WIDTH; x++) {
+                    if (getCell(x, y)) {
+                        // Add glow effect
+                        ctx.shadowColor = COLORS.live;
+                        ctx.shadowBlur = 5;
+                        ctx.fillRect(
+                            x * CELL_SIZE + 1, 
+                            y * CELL_SIZE + 1, 
+                            CELL_SIZE - 2, 
+                            CELL_SIZE - 2
+                        );
+                        ctx.shadowBlur = 0;
+                    }
+                }
+            }
+        }
+
+        // Animation loop
+        function animate(currentTime) {
+            if (!isRunning) return;
+            
+            if (currentTime - lastFrameTime >= frameInterval) {
+                step();
+                render();
+                lastFrameTime = currentTime;
+            }
+            
+            animationId = requestAnimationFrame(animate);
+        }
+
+        // Update stats display
+        function updateStats() {
+            document.getElementById('generation').textContent = generation;
+            document.getElementById('population').textContent = population;
+            document.getElementById('maxPopulation').textContent = maxPopulation;
+        }
+
+        // Update share URL
+        function updateShareURL() {
+            const liveCells = [];
+            for (let y = 0; y < GRID_HEIGHT; y++) {
+                for (let x = 0; x < GRID_WIDTH; x++) {
+                    if (getCell(x, y)) {
+                        liveCells.push(`${x},${y}`);
+                    }
+                }
+            }
+            
+            if (liveCells.length === 0) {
+                document.getElementById('shareUrl').value = '';
+                return;
+            }
+            
+            const params = new URLSearchParams();
+            params.set('cells', liveCells.join(';'));
+            params.set('gen', generation);
+            
+            const url = `${window.location.origin}${window.location.pathname}?${params.toString()}`;
+            document.getElementById('shareUrl').value = url;
+        }
+
+        // Load pattern from URL
+        function loadFromURL() {
+            const params = new URLSearchParams(window.location.search);
+            const cells = params.get('cells');
+            
+            if (cells) {
+                clear();
+                cells.split(';').forEach(coord => {
+                    const [x, y] = coord.split(',').map(Number);
+                    if (!isNaN(x) && !isNaN(y)) {
+                        setCell(x, y, 1);
+                    }
+                });
+                generation = parseInt(params.get('gen')) || 0;
+                updateStats();
+            }
+        }
+
+        // Place pattern on grid
+        function placePattern(patternName, offsetX, offsetY) {
+            const pattern = PATTERNS[patternName];
+            if (!pattern) return;
+            
+            for (const [x, y] of pattern) {
+                setCell(offsetX + x, offsetY + y, 1);
+            }
+            
+            updateStats();
+            updateShareURL();
+            render();
+        }
+
+        // Clear grid
+        function clear() {
+            grid.fill(0);
+            generation = 0;
+            population = 0;
+            maxPopulation = 0;
+            updateStats();
+            updateShareURL();
+            render();
+        }
+
+        // Random seed
+        function randomSeed() {
+            clear();
+            for (let i = 0; i < grid.length; i++) {
+                grid[i] = Math.random() > 0.85 ? 1 : 0;
+            }
+            
+            population = grid.reduce((a, b) => a + b, 0);
+            maxPopulation = population;
+            updateStats();
+            updateShareURL();
+            render();
+        }
+
+        // Get grid coordinates from mouse event
+        function getGridCoords(e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = Math.floor((e.clientX - rect.left) / CELL_SIZE);
+            const y = Math.floor((e.clientY - rect.top) / CELL_SIZE);
+            return { x, y };
+        }
+
+        // Event listeners
+        document.getElementById('playPauseBtn').addEventListener('click', () => {
+            isRunning = !isRunning;
+            const btn = document.getElementById('playPauseBtn');
+            if (isRunning) {
+                btn.textContent = '⏸ Pause';
+                lastFrameTime = performance.now();
+                animate(lastFrameTime);
+            } else {
+                btn.textContent = '▶ Play';
+                cancelAnimationFrame(animationId);
+            }
+        });
+
+        document.getElementById('stepBtn').addEventListener('click', () => {
+            if (isRunning) {
+                isRunning = false;
+                document.getElementById('playPauseBtn').textContent = '▶ Play';
+                cancelAnimationFrame(animationId);
+            }
+            step();
+            render();
+        });
+
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            if (isRunning) {
+                isRunning = false;
+                document.getElementById('playPauseBtn').textContent = '▶ Play';
+                cancelAnimationFrame(animationId);
+            }
+            loadFromURL();
+            if (!window.location.search) {
+                clear();
+            }
+            render();
+        });
+
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            if (isRunning) {
+                isRunning = false;
+                document.getElementById('playPauseBtn').textContent = '▶ Play';
+                cancelAnimationFrame(animationId);
+            }
+            clear();
+        });
+
+        document.getElementById('randomBtn').addEventListener('click', () => {
+            if (isRunning) {
+                isRunning = false;
+                document.getElementById('playPauseBtn').textContent = '▶ Play';
+                cancelAnimationFrame(animationId);
+            }
+            randomSeed();
+        });
+
+        document.getElementById('speedSlider').addEventListener('input', (e) => {
+            const fps = parseInt(e.target.value);
+            frameInterval = 1000 / fps;
+            document.getElementById('speedValue').textContent = `${fps} FPS`;
+        });
+
+        document.getElementById('copyUrlBtn').addEventListener('click', () => {
+            const urlInput = document.getElementById('shareUrl');
+            if (urlInput.value) {
+                urlInput.select();
+                navigator.clipboard.writeText(urlInput.value).then(() => {
+                    const btn = document.getElementById('copyUrlBtn');
+                    const originalText = btn.textContent;
+                    btn.textContent = '✓ Copied!';
+                    setTimeout(() => {
+                        btn.textContent = originalText;
+                    }, 2000);
+                });
+            }
+        });
+
+        // Pattern buttons
+        document.querySelectorAll('.pattern-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                if (isRunning) {
+                    isRunning = false;
+                    document.getElementById('playPauseBtn').textContent = '▶ Play';
+                    cancelAnimationFrame(animationId);
+                }
+                
+                const pattern = e.target.dataset.pattern;
+                const offsetX = Math.floor(GRID_WIDTH / 2) - 10;
+                const offsetY = Math.floor(GRID_HEIGHT / 2) - 10;
+                
+                // Clear first, then place pattern
+                clear();
+                placePattern(pattern, offsetX, offsetY);
+            });
+        });
+
+        // Canvas mouse events for drawing
+        canvas.addEventListener('mousedown', (e) => {
+            if (isRunning) return;
+            
+            const { x, y } = getGridCoords(e);
+            if (e.button === 2) {
+                isErasing = true;
+                setCell(x, y, 0);
+            } else {
+                isDrawing = true;
+                setCell(x, y, 1);
+            }
+            updateStats();
+            updateShareURL();
+            render();
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (!isDrawing && !isErasing) return;
+            
+            const { x, y } = getGridCoords(e);
+            if (isDrawing) {
+                setCell(x, y, 1);
+            } else if (isErasing) {
+                setCell(x, y, 0);
+            }
+            updateStats();
+            updateShareURL();
+            render();
+        });
+
+        canvas.addEventListener('mouseup', () => {
+            isDrawing = false;
+            isErasing = false;
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            isDrawing = false;
+            isErasing = false;
+        });
+
+        // Prevent context menu on right-click
+        canvas.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+        });
+
+        // Initialize
+        init();
+    </script>
+</body>
+</html>
