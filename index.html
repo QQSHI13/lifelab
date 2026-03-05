@@ -611,7 +611,12 @@
             if (!pattern) return;
             
             for (const [x, y] of pattern) {
-                setCell(offsetX + x, offsetY + y, 1);
+                const finalX = offsetX + x;
+                const finalY = offsetY + y;
+                // Bounds check to prevent wrapping issues
+                if (finalX >= 0 && finalX < GRID_WIDTH && finalY >= 0 && finalY < GRID_HEIGHT) {
+                    setCell(finalX, finalY, 1);
+                }
             }
             
             updateStats();
