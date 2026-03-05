@@ -3,460 +3,303 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Conway's Game of Life</title>
+    <title>LifeLab - Cellular Automaton Explorer</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔬</text></svg>">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root {
+            --bg: #0d1117; --surface: #161b22; --surface-hover: #21262d; --border: #30363d;
+            --text: #c9d1d9; --text-secondary: #8b949e; --accent: #58a6ff; --accent-hover: #79c0ff;
+            --success: #238636; --cell-alive: #58a6ff; --grid-line: #21262d;
         }
-
+        
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
-            background-color: #0d1117;
-            color: #c9d1d9;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg); color: var(--text); height: 100vh; overflow: hidden;
+            display: flex; flex-direction: column;
         }
-
-        h1 {
-            color: #58a6ff;
-            margin-bottom: 20px;
-            font-size: 28px;
+        
+        .header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 10px 20px; background: var(--surface); border-bottom: 1px solid var(--border); gap: 20px;
         }
-
-        .container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 15px;
-            max-width: 100%;
+        
+        .logo { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 700; color: var(--accent); }
+        .logo-icon { width: 32px; height: 32px; background: linear-gradient(135deg, var(--accent), var(--success)); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+        
+        .controls { display: flex; align-items: center; gap: 8px; }
+        .btn { padding: 6px 14px; background: var(--surface-hover); border: 1px solid var(--border); color: var(--text); border-radius: 6px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 6px; transition: all 0.15s; }
+        .btn:hover { background: var(--border); }
+        .btn.primary { background: var(--success); border-color: var(--success); color: white; }
+        .btn-icon { width: 32px; height: 32px; padding: 0; justify-content: center; }
+        
+        .speed-control { display: flex; align-items: center; gap: 8px; padding: 0 12px; border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
+        .speed-control input { width: 100px; accent-color: var(--accent); }
+        .speed-label { font-size: 12px; color: var(--text-secondary); }
+        .gen-counter { font-family: 'JetBrains Mono', monospace; font-size: 16px; color: var(--accent); font-weight: 700; }
+        
+        .main { display: flex; flex: 1; overflow: hidden; }
+        
+        .sidebar {
+            width: 260px; background: var(--surface); border-right: 1px solid var(--border);
+            display: flex; flex-direction: column; overflow: hidden;
         }
-
-        .stats {
-            display: flex;
-            gap: 30px;
-            background: #161b22;
-            padding: 12px 24px;
-            border-radius: 8px;
-            border: 1px solid #30363d;
+        
+        .sidebar-section { border-bottom: 1px solid var(--border); }
+        .sidebar-header { padding: 10px 14px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); background: rgba(0,0,0,0.2); }
+        .sidebar-content { padding: 10px; max-height: 180px; overflow-y: auto; }
+        
+        select, .pattern-btn {
+            width: 100%; padding: 8px 12px; background: var(--bg); border: 1px solid var(--border);
+            color: var(--text); border-radius: 6px; font-size: 13px; cursor: pointer; margin-bottom: 8px;
         }
-
-        .stat {
-            text-align: center;
-        }
-
-        .stat-value {
-            font-size: 24px;
-            font-weight: bold;
-            color: #58a6ff;
-        }
-
-        .stat-label {
-            font-size: 12px;
-            color: #8b949e;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .controls {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            justify-content: center;
-            align-items: center;
-            background: #161b22;
-            padding: 15px 20px;
-            border-radius: 8px;
-            border: 1px solid #30363d;
-        }
-
-        button {
-            background: #21262d;
-            color: #c9d1d9;
-            border: 1px solid #30363d;
-            padding: 8px 16px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
-            transition: all 0.2s;
-        }
-
-        button:hover {
-            background: #30363d;
-            border-color: #8b949e;
-        }
-
-        button:active {
-            transform: translateY(1px);
-        }
-
-        button.primary {
-            background: #238636;
-            border-color: #238636;
-            color: #fff;
-        }
-
-        button.primary:hover {
-            background: #2ea043;
-        }
-
-        button.danger {
-            background: #da3633;
-            border-color: #da3633;
-            color: #fff;
-        }
-
-        button.danger:hover {
-            background: #f85149;
-        }
-
-        .slider-container {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-left: 10px;
-        }
-
-        .slider-container label {
-            font-size: 12px;
-            color: #8b949e;
-            white-space: nowrap;
-        }
-
-        input[type="range"] {
-            width: 120px;
-            cursor: pointer;
-        }
-
-        #speedValue {
-            font-size: 12px;
-            color: #58a6ff;
-            min-width: 35px;
-        }
-
-        .patterns {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            justify-content: center;
-            background: #161b22;
-            padding: 15px 20px;
-            border-radius: 8px;
-            border: 1px solid #30363d;
-        }
-
-        .pattern-group {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-        }
-
-        .pattern-group-title {
-            font-size: 11px;
-            color: #8b949e;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 3px;
-        }
-
-        .pattern-buttons {
-            display: flex;
-            gap: 5px;
-            flex-wrap: wrap;
-        }
-
-        .pattern-btn {
-            padding: 6px 12px;
-            font-size: 12px;
-            background: #21262d;
-        }
-
-        .pattern-btn:hover {
-            background: #30363d;
-        }
-
-        .canvas-container {
-            position: relative;
-            border: 2px solid #30363d;
-            border-radius: 8px;
-            overflow: hidden;
-            background: #010409;
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
-        }
-
-        #gridCanvas {
-            display: block;
-            cursor: crosshair;
-        }
-
-        .instructions {
-            text-align: center;
-            color: #8b949e;
-            font-size: 13px;
-            margin-top: 10px;
-        }
-
-        .share-container {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            background: #161b22;
-            padding: 10px 15px;
-            border-radius: 8px;
-            border: 1px solid #30363d;
-        }
-
-        #shareUrl {
-            background: #0d1117;
-            border: 1px solid #30363d;
-            color: #c9d1d9;
-            padding: 6px 10px;
-            border-radius: 6px;
-            font-size: 12px;
-            width: 300px;
-            font-family: monospace;
-        }
-
-        .generation-history {
-            max-height: 150px;
-            overflow-y: auto;
-            background: #161b22;
-            border: 1px solid #30363d;
-            border-radius: 8px;
-            padding: 10px;
-            font-family: monospace;
-            font-size: 11px;
-            color: #8b949e;
-        }
-
-        .checkbox-container {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 13px;
-            color: #8b949e;
-        }
-
-        input[type="checkbox"] {
-            width: 16px;
-            height: 16px;
-            cursor: pointer;
-        }
+        .pattern-btn { text-align: left; margin-bottom: 6px; font-size: 12px; }
+        .pattern-btn:hover { border-color: var(--accent); }
+        .pattern-btn .name { font-weight: 600; display: block; }
+        .pattern-btn .desc { font-size: 10px; color: var(--text-secondary); }
+        
+        .pattern-tabs { display: flex; gap: 4px; padding: 8px; border-bottom: 1px solid var(--border); overflow-x: auto; }
+        .tab { padding: 5px 10px; background: transparent; border: 1px solid transparent; color: var(--text-secondary); border-radius: 4px; cursor: pointer; font-size: 11px; white-space: nowrap; }
+        .tab:hover { background: var(--surface-hover); color: var(--text); }
+        .tab.active { background: var(--accent); color: white; }
+        
+        .stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; padding: 10px; }
+        .stat-box { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px; text-align: center; }
+        .stat-value { font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 700; color: var(--accent); }
+        .stat-label { font-size: 10px; color: var(--text-secondary); text-transform: uppercase; margin-top: 4px; }
+        
+        .canvas-container { flex: 1; position: relative; background: var(--bg); overflow: hidden; cursor: crosshair; }
+        #gridCanvas { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+        
+        .info-overlay { position: absolute; top: 12px; left: 12px; padding: 8px 12px; background: rgba(13,17,23,0.9); border: 1px solid var(--border); border-radius: 6px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-secondary); }
+        .info-overlay span { color: var(--accent); }
+        
+        .toolbar { position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; padding: 6px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+        .tool-btn { width: 36px; height: 36px; background: var(--surface-hover); border: 1px solid var(--border); color: var(--text); border-radius: 6px; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; }
+        .tool-btn:hover { background: var(--border); }
+        .tool-btn.active { background: var(--accent); border-color: var(--accent); color: white; }
+        .zoom-display { display: flex; align-items: center; padding: 0 10px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-secondary); }
+        
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
     </style>
 </head>
 <body>
-    <h1>☄️ Conway's Game of Life</h1>
-    
-    <div class="container">
-        <div class="stats">
-            <div class="stat">
-                <div class="stat-value" id="generation">0</div>
-                <div class="stat-label">Generation</div>
-            </div>
-            <div class="stat">
-                <div class="stat-value" id="population">0</div>
-                <div class="stat-label">Population</div>
-            </div>
-            <div class="stat">
-                <div class="stat-value" id="maxPopulation">0</div>
-                <div class="stat-label">Max Population</div>
-            </div>
-        </div>
-
+    <div class="header">
+        <div class="logo"><div class="logo-icon">🔬</div><span>LifeLab</span></div>
         <div class="controls">
-            <button id="playPauseBtn" class="primary">▶ Play</button>
-            <button id="stepBtn">⏭ Step</button>
-            <button id="resetBtn" class="danger">↺ Reset</button>
-            <button id="clearBtn">🗑 Clear</button>
-            <button id="randomBtn">🎲 Random</button>
+            <button class="btn btn-icon" id="btn-reset" title="Reset">↺</button>
+            <button class="btn btn-icon" id="btn-clear" title="Clear">🗑</button>
+            <button class="btn btn-icon" id="btn-step-back" title="Step Back">⏮</button>
+            <button class="btn primary" id="btn-play"><span id="play-icon">▶</span></button>
+            <button class="btn btn-icon" id="btn-step" title="Step">⏭</button>
+            <button class="btn btn-icon" id="btn-random" title="Random">🎲</button>
+            <div class="speed-control">
+                <span class="speed-label">Speed</span>
+                <input type="range" id="speed" min="1" max="60" value="20">
+                <span id="speed-val">20</span>
+            </div>
+        </div>
+        <div class="gen-counter">Gen: <span id="gen">0</span></div>
+    </div>
+
+    <div class="main">
+        <div class="sidebar">
+            <div class="sidebar-section">
+                <div class="sidebar-header">Rule Set</div>
+                <div class="sidebar-content">
+                    <select id="rule-select">
+                        <option value="B3/S23">Conway's Life (B3/S23)</option>
+                        <option value="B36/S23">HighLife (B36/S23)</option>
+                        <option value="B2/S">Seeds (B2/S)</option>
+                        <option value="B3678/S34678">Day & Night (B3678/S34678)</option>
+                    </select>
+                </div>
+            </div>
             
-            <div class="slider-container">
-                <label>Speed:</label>
-                <input type="range" id="speedSlider" min="1" max="60" value="10">
-                <span id="speedValue">10 FPS</span>
-            </div>
-        </div>
-
-        <div class="patterns">
-            <div class="pattern-group">
-                <span class="pattern-group-title">Guns</span>
-                <div class="pattern-buttons">
-                    <button class="pattern-btn" data-pattern="gosper">Gosper Gun</button>
+            <div class="sidebar-section" style="flex: 1; display: flex; flex-direction: column;">
+                <div class="sidebar-header">Pattern Library</div>
+                <div class="pattern-tabs">
+                    <button class="tab active" data-cat="guns">Guns</button>
+                    <button class="tab" data-cat="ships">Ships</button>
+                    <button class="tab" data-cat="osc">Osc</button>
+                    <button class="tab" data-cat="still">Still</button>
+                    <button class="tab" data-cat="meth">Meth</button>
                 </div>
+                <div class="sidebar-content" id="pattern-list"></div>
             </div>
-            <div class="pattern-group">
-                <span class="pattern-group-title">Spaceships</span>
-                <div class="pattern-buttons">
-                    <button class="pattern-btn" data-pattern="glider">Glider</button>
-                    <button class="pattern-btn" data-pattern="lightweight">LWSS</button>
-                    <button class="pattern-btn" data-pattern="middleweight">MWSS</button>
-                    <button class="pattern-btn" data-pattern="heavyweight">HWSS</button>
-                </div>
-            </div>
-            <div class="pattern-group">
-                <span class="pattern-group-title">Oscillators</span>
-                <div class="pattern-buttons">
-                    <button class="pattern-btn" data-pattern="blinker">Blinker</button>
-                    <button class="pattern-btn" data-pattern="toad">Toad</button>
-                    <button class="pattern-btn" data-pattern="beacon">Beacon</button>
-                    <button class="pattern-btn" data-pattern="pulsar">Pulsar</button>
-                </div>
-            </div>
-            <div class="pattern-group">
-                <span class="pattern-group-title">Still Lifes</span>
-                <div class="pattern-buttons">
-                    <button class="pattern-btn" data-pattern="block">Block</button>
-                    <button class="pattern-btn" data-pattern="beehive">Beehive</button>
-                    <button class="pattern-btn" data-pattern="loaf">Loaf</button>
-                    <button class="pattern-btn" data-pattern="boat">Boat</button>
+            
+            <div class="sidebar-section">
+                <div class="sidebar-header">Statistics</div>
+                <div class="stats">
+                    <div class="stat-box"><div class="stat-value" id="pop">0</div><div class="stat-label">Population</div></div>
+                    <div class="stat-box"><div class="stat-value" id="births">0</div><div class="stat-label">Births</div></div>
+                    <div class="stat-box"><div class="stat-value" id="deaths">0</div><div class="stat-label">Deaths</div></div>
+                    <div class="stat-box"><div class="stat-value" id="density">0%</div><div class="stat-label">Density</div></div>
                 </div>
             </div>
         </div>
 
-        <div class="canvas-container">
-            <canvas id="gridCanvas" width="800" height="600"></canvas>
-        </div>
-
-        <div class="instructions">
-            🖱️ Click/drag to draw cells • Right-click/drag to erase • Scroll to zoom (coming soon)
-        </div>
-
-        <div class="share-container">
-            <input type="text" id="shareUrl" readonly placeholder="Click 'Copy URL' to share pattern">
-            <button id="copyUrlBtn">📋 Copy URL</button>
+        <div class="canvas-container" id="container">
+            <canvas id="gridCanvas"></canvas>
+            <div class="info-overlay">Pos: <span id="pos">0, 0</span> | Zoom: <span id="zoom">100%</span></div>
+            <div class="toolbar">
+                <button class="tool-btn active" id="tool-draw" title="Draw">✏️</button>
+                <button class="tool-btn" id="tool-erase" title="Erase">🧼</button>
+                <button class="tool-btn" id="tool-pan" title="Pan">✋</button>
+                <div style="width: 1px; background: var(--border); margin: 4px;"></div>
+                <button class="tool-btn" id="zoom-out">−</button>
+                <div class="zoom-display" id="zoom-level">100%</div>
+                <button class="tool-btn" id="zoom-in">+</button>
+            </div>
         </div>
     </div>
 
     <script>
-        // Game of Life Implementation
-        const canvas = document.getElementById('gridCanvas');
-        const ctx = canvas.getContext('2d');
-        
-        // Grid configuration
-        const CELL_SIZE = 10;
-        const GRID_WIDTH = 80;
-        const GRID_HEIGHT = 60;
-        const COLORS = {
-            background: '#010409',
-            grid: '#21262d',
-            live: '#58a6ff',
-            liveGlow: 'rgba(88, 166, 255, 0.5)'
-        };
-
-        // Game state
-        let grid = new Uint8Array(GRID_WIDTH * GRID_HEIGHT);
-        let nextGrid = new Uint8Array(GRID_WIDTH * GRID_HEIGHT);
-        let isRunning = false;
-        let generation = 0;
-        let population = 0;
-        let maxPopulation = 0;
-        let animationId = null;
-        let lastFrameTime = 0;
-        let frameInterval = 100; // milliseconds between frames
-        
-        // Mouse state
-        let isDrawing = false;
-        let isErasing = false;
-
-        // Pattern definitions (relative coordinates from top-left)
+        // Pattern Library
         const PATTERNS = {
-            // Gosper Glider Gun
-            gosper: [
-                [0, 4], [0, 5], [1, 4], [1, 5], // Block
-                [10, 4], [10, 5], [10, 6], [11, 3], [11, 7], [12, 2], [12, 8], [13, 2], [13, 8], [14, 5], 
-                [15, 3], [15, 7], [16, 4], [16, 5], [16, 6], [17, 5],
-                [20, 2], [20, 3], [20, 4], [21, 2], [21, 3], [21, 4], [22, 1], [22, 5], [24, 0], [24, 1], [24, 5], [24, 6],
-                [34, 2], [34, 3], [35, 2], [35, 3]
+            guns: [
+                { name: 'Gosper Gun', desc: 'First glider gun', cells: [[0,4],[0,5],[1,4],[1,5],[10,4],[10,5],[10,6],[11,3],[11,7],[12,2],[12,8],[13,2],[13,8],[14,5],[15,3],[15,7],[16,4],[16,5],[16,6],[17,5],[20,2],[20,3],[20,4],[21,2],[21,3],[21,4],[22,1],[22,5],[24,0],[24,1],[24,5],[24,6],[34,2],[34,3],[35,2],[35,3]] },
+                { name: 'Simkin Gun', desc: 'Smaller gun', cells: [[0,0],[0,1],[1,0],[1,1],[7,0],[7,1],[8,0],[8,1],[4,4],[4,5],[5,4],[5,5],[14,2],[14,3],[14,4],[15,1],[15,5],[16,0],[16,6],[17,0],[17,6],[18,3],[19,1],[19,5],[20,2],[20,3],[20,4]] }
             ],
-            // Glider
-            glider: [
-                [1, 0], [2, 1], [0, 2], [1, 2], [2, 2]
+            ships: [
+                { name: 'Glider', desc: 'Period 4', cells: [[1,0],[2,1],[0,2],[1,2],[2,2]] },
+                { name: 'LWSS', desc: 'Lightweight', cells: [[0,1],[3,1],[4,2],[0,3],[4,3],[1,4],[2,4],[3,4],[4,4]] },
+                { name: 'MWSS', desc: 'Middleweight', cells: [[1,0],[2,0],[3,0],[4,0],[5,0],[0,1],[5,1],[5,2],[0,3],[4,3],[2,4]] },
+                { name: 'HWSS', desc: 'Heavyweight', cells: [[1,0],[2,0],[3,0],[4,0],[5,0],[6,0],[0,1],[6,1],[6,2],[0,3],[5,3],[2,4]] }
             ],
-            // Lightweight Spaceship (LWSS)
-            lightweight: [
-                [0, 1], [3, 1], [4, 2], [0, 3], [4, 3], [1, 4], [2, 4], [3, 4], [4, 4]
+            osc: [
+                { name: 'Blinker', desc: 'Period 2', cells: [[0,1],[1,1],[2,1]] },
+                { name: 'Toad', desc: 'Period 2', cells: [[1,1],[2,1],[3,1],[0,2],[1,2],[2,2]] },
+                { name: 'Beacon', desc: 'Period 2', cells: [[0,0],[1,0],[0,1],[3,2],[2,3],[3,3]] },
+                { name: 'Pulsar', desc: 'Period 3', cells: [[2,0],[3,0],[4,0],[8,0],[9,0],[10,0],[0,2],[5,2],[7,2],[12,2],[0,3],[5,3],[7,3],[12,3],[0,4],[5,4],[7,4],[12,4],[2,5],[3,5],[4,5],[8,5],[9,5],[10,5],[2,7],[3,7],[4,7],[8,7],[9,7],[10,7],[0,8],[5,8],[7,8],[12,8],[0,9],[5,9],[7,9],[12,9],[0,10],[5,10],[7,10],[12,10],[2,12],[3,12],[4,12],[8,12],[9,12],[10,12]] },
+                { name: 'Pentadecathlon', desc: 'Period 15', cells: [[1,0],[2,0],[0,1],[1,1],[2,1],[3,1],[1,2],[2,2],[1,5],[2,5],[0,6],[1,6],[2,6],[3,6],[1,7],[2,7]] }
             ],
-            // Middleweight Spaceship (MWSS)
-            middleweight: [
-                [1, 0], [2, 0], [3, 0], [4, 0], [5, 0], [0, 1], [5, 1], [5, 2], [0, 3], [4, 3], [2, 4]
+            still: [
+                { name: 'Block', desc: '4 cells', cells: [[0,0],[1,0],[0,1],[1,1]] },
+                { name: 'Beehive', desc: '6 cells', cells: [[1,0],[2,0],[0,1],[3,1],[1,2],[2,2]] },
+                { name: 'Loaf', desc: '7 cells', cells: [[1,0],[2,0],[0,1],[3,1],[1,2],[3,2],[2,3]] },
+                { name: 'Boat', desc: '5 cells', cells: [[0,0],[1,0],[0,1],[2,1],[1,2]] }
             ],
-            // Heavyweight Spaceship (HWSS)
-            heavyweight: [
-                [1, 0], [2, 0], [3, 0], [4, 0], [5, 0], [6, 0], [0, 1], [6, 1], [6, 2], [0, 3], [5, 3], [2, 4]
-            ],
-            // Blinker (period 2)
-            blinker: [
-                [0, 1], [1, 1], [2, 1]
-            ],
-            // Toad (period 2)
-            toad: [
-                [1, 1], [2, 1], [3, 1], [0, 2], [1, 2], [2, 2]
-            ],
-            // Beacon (period 2)
-            beacon: [
-                [0, 0], [1, 0], [0, 1], [3, 2], [2, 3], [3, 3]
-            ],
-            // Pulsar (period 3)
-            pulsar: [
-                [2, 0], [3, 0], [4, 0], [8, 0], [9, 0], [10, 0],
-                [0, 2], [5, 2], [7, 2], [12, 2],
-                [0, 3], [5, 3], [7, 3], [12, 3],
-                [0, 4], [5, 4], [7, 4], [12, 4],
-                [2, 5], [3, 5], [4, 5], [8, 5], [9, 5], [10, 5],
-                [2, 7], [3, 7], [4, 7], [8, 7], [9, 7], [10, 7],
-                [0, 8], [5, 8], [7, 8], [12, 8],
-                [0, 9], [5, 9], [7, 9], [12, 9],
-                [0, 10], [5, 10], [7, 10], [12, 10],
-                [2, 12], [3, 12], [4, 12], [8, 12], [9, 12], [10, 12]
-            ],
-            // Block
-            block: [
-                [0, 0], [1, 0], [0, 1], [1, 1]
-            ],
-            // Beehive
-            beehive: [
-                [1, 0], [2, 0], [0, 1], [3, 1], [1, 2], [2, 2]
-            ],
-            // Loaf
-            loaf: [
-                [1, 0], [2, 0], [0, 1], [3, 1], [1, 2], [3, 2], [2, 3]
-            ],
-            // Boat
-            boat: [
-                [0, 0], [1, 0], [0, 1], [2, 1], [1, 2]
+            meth: [
+                { name: 'R-pentomino', desc: '1103 gens', cells: [[1,0],[2,0],[0,1],[1,1],[1,2]] },
+                { name: 'Diehard', desc: '130 gens', cells: [[6,0],[0,1],[1,1],[1,2],[5,2],[6,2],[7,2]] },
+                { name: 'Acorn', desc: '5206 gens', cells: [[1,0],[3,1],[0,2],[1,2],[1,3],[4,2],[5,2],[6,2]] }
             ]
         };
 
-        // Initialize
+        // Rules
+        const RULES = {
+            'B3/S23': { born: [3], survive: [2,3], name: "Conway's Life" },
+            'B36/S23': { born: [3,6], survive: [2,3], name: 'HighLife' },
+            'B2/S': { born: [2], survive: [], name: 'Seeds' },
+            'B3678/S34678': { born: [3,6,7,8], survive: [3,4,6,7,8], name: 'Day & Night' }
+        };
+
+        // State
+        let canvas, ctx, width, height, cellSize = 10, zoom = 1;
+        let offsetX = 0, offsetY = 0, isDragging = false, dragStartX, dragStartY;
+        let isPlaying = false, generation = 0, speed = 20, lastFrame = 0;
+        let grid = new Map(), history = [], currentTool = 'draw';
+        let rule = RULES['B3/S23'];
+        let population = 0, births = 0, deaths = 0;
+
+        // Init
         function init() {
-            loadFromURL();
+            canvas = document.getElementById('gridCanvas');
+            ctx = canvas.getContext('2d');
+            resize();
+            window.addEventListener('resize', resize);
+            
+            // Controls
+            document.getElementById('btn-play').onclick = togglePlay;
+            document.getElementById('btn-step').onclick = step;
+            document.getElementById('btn-step-back').onclick = stepBack;
+            document.getElementById('btn-clear').onclick = clear;
+            document.getElementById('btn-reset').onclick = () => { clear(); generation = 0; updateStats(); };
+            document.getElementById('btn-random').onclick = randomFill;
+            document.getElementById('speed').oninput = (e) => { speed = parseInt(e.target.value); document.getElementById('speed-val').textContent = speed; };
+            document.getElementById('rule-select').onchange = (e) => { rule = RULES[e.target.value]; };
+            
+            // Tools
+            document.getElementById('tool-draw').onclick = () => setTool('draw');
+            document.getElementById('tool-erase').onclick = () => setTool('erase');
+            document.getElementById('tool-pan').onclick = () => setTool('pan');
+            document.getElementById('zoom-in').onclick = () => { zoom *= 1.2; render(); };
+            document.getElementById('zoom-out').onclick = () => { zoom /= 1.2; render(); };
+            
+            // Pattern tabs
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.onclick = () => {
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    renderPatterns(tab.dataset.cat);
+                };
+            });
+            
+            // Canvas interaction
+            canvas.onmousedown = onMouseDown;
+            canvas.onmousemove = onMouseMove;
+            canvas.onmouseup = onMouseUp;
+            canvas.onwheel = onWheel;
+            
+            renderPatterns('guns');
             render();
+            requestAnimationFrame(loop);
+        }
+
+        function resize() {
+            const container = document.getElementById('container');
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            width = Math.ceil(canvas.width / cellSize);
+            height = Math.ceil(canvas.height / cellSize);
+            render();
+        }
+
+        function setTool(tool) {
+            currentTool = tool;
+            document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('tool-' + tool).classList.add('active');
+            canvas.style.cursor = tool === 'pan' ? 'grab' : 'crosshair';
+        }
+
+        function renderPatterns(category) {
+            const list = document.getElementById('pattern-list');
+            list.innerHTML = '';
+            (PATTERNS[category] || []).forEach(p => {
+                const btn = document.createElement('button');
+                btn.className = 'pattern-btn';
+                btn.innerHTML = `<span class="name">${p.name}</span><span class="desc">${p.desc}</span>`;
+                btn.onclick = () => loadPattern(p);
+                list.appendChild(btn);
+            });
+        }
+
+        function loadPattern(pattern) {
+            saveHistory();
+            const cx = Math.floor(width / 2), cy = Math.floor(height / 2);
+            pattern.cells.forEach(([x, y]) => {
+                grid.set(`${cx + x},${cy + y}`, 1);
+            });
             updateStats();
+            render();
         }
 
-        // Get cell index with wrap-around (toroidal)
-        function getIndex(x, y) {
-            const wrappedX = ((x % GRID_WIDTH) + GRID_WIDTH) % GRID_WIDTH;
-            const wrappedY = ((y % GRID_HEIGHT) + GRID_HEIGHT) % GRID_HEIGHT;
-            return wrappedY * GRID_WIDTH + wrappedX;
-        }
-
-        // Get cell state
         function getCell(x, y) {
-            return grid[getIndex(x, y)];
+            return grid.has(`${x},${y}`) ? 1 : 0;
         }
 
-        // Set cell state
-        function setCell(x, y, value) {
-            grid[getIndex(x, y)] = value;
+        function setCell(x, y, alive) {
+            const key = `${x},${y}`;
+            if (alive) grid.set(key, 1);
+            else grid.delete(key);
         }
 
-        // Count neighbors with wrap-around
         function countNeighbors(x, y) {
             let count = 0;
             for (let dy = -1; dy <= 1; dy++) {
@@ -468,337 +311,200 @@
             return count;
         }
 
-        // Compute next generation
         function step() {
-            population = 0;
+            saveHistory();
+            const newGrid = new Map();
+            const checked = new Set();
+            births = 0; deaths = 0;
             
-            for (let y = 0; y < GRID_HEIGHT; y++) {
-                for (let x = 0; x < GRID_WIDTH; x++) {
-                    const neighbors = countNeighbors(x, y);
-                    const current = getCell(x, y);
-                    const idx = y * GRID_WIDTH + x;
-                    
-                    if (current === 1) {
-                        // Live cell: survives with 2 or 3 neighbors
-                        nextGrid[idx] = (neighbors === 2 || neighbors === 3) ? 1 : 0;
-                    } else {
-                        // Dead cell: born with exactly 3 neighbors
-                        nextGrid[idx] = (neighbors === 3) ? 1 : 0;
+            // Check all cells that could change
+            grid.forEach((_, key) => {
+                const [x, y] = key.split(',').map(Number);
+                for (let dy = -1; dy <= 1; dy++) {
+                    for (let dx = -1; dx <= 1; dx++) {
+                        const cx = x + dx, cy = y + dy;
+                        const ckey = `${cx},${cy}`;
+                        if (checked.has(ckey)) continue;
+                        checked.add(ckey);
+                        
+                        const neighbors = countNeighbors(cx, cy);
+                        const alive = getCell(cx, cy);
+                        
+                        if (alive) {
+                            if (rule.survive.includes(neighbors)) newGrid.set(ckey, 1);
+                            else deaths++;
+                        } else {
+                            if (rule.born.includes(neighbors)) {
+                                newGrid.set(ckey, 1);
+                                births++;
+                            }
+                        }
                     }
-                    
-                    population += nextGrid[idx];
                 }
-            }
+            });
             
-            // Swap grids
-            [grid, nextGrid] = [nextGrid, grid];
-            
+            grid = newGrid;
             generation++;
-            if (population > maxPopulation) {
-                maxPopulation = population;
-            }
-            
             updateStats();
-            updateShareURL();
+            render();
         }
 
-        // Render grid
+        function saveHistory() {
+            if (history.length > 50) history.shift();
+            history.push(new Map(grid));
+        }
+
+        function stepBack() {
+            if (history.length === 0) return;
+            grid = history.pop();
+            generation = Math.max(0, generation - 1);
+            updateStats();
+            render();
+        }
+
+        function clear() {
+            saveHistory();
+            grid.clear();
+            generation = 0;
+            updateStats();
+            render();
+        }
+
+        function randomFill() {
+            saveHistory();
+            grid.clear();
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    if (Math.random() < 0.15) grid.set(`${x},${y}`, 1);
+                }
+            }
+            updateStats();
+            render();
+        }
+
+        function togglePlay() {
+            isPlaying = !isPlaying;
+            document.getElementById('play-icon').textContent = isPlaying ? '⏸' : '▶';
+        }
+
+        function updateStats() {
+            population = grid.size;
+            document.getElementById('pop').textContent = population;
+            document.getElementById('births').textContent = births;
+            document.getElementById('deaths').textContent = deaths;
+            document.getElementById('gen').textContent = generation;
+            document.getElementById('density').textContent = Math.round(population / (width * height) * 100) + '%';
+        }
+
         function render() {
-            // Clear canvas
-            ctx.fillStyle = COLORS.background;
+            ctx.fillStyle = '#0d1117';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
-            // Draw grid lines
-            ctx.strokeStyle = COLORS.grid;
-            ctx.lineWidth = 0.5;
+            const cellW = cellSize * zoom;
+            const cellH = cellSize * zoom;
+            const startX = Math.floor(-offsetX / cellW);
+            const startY = Math.floor(-offsetY / cellH);
+            const endX = startX + Math.ceil(canvas.width / cellW) + 1;
+            const endY = startY + Math.ceil(canvas.height / cellH) + 1;
             
+            // Grid lines
+            ctx.strokeStyle = '#21262d';
+            ctx.lineWidth = 0.5;
             ctx.beginPath();
-            for (let x = 0; x <= GRID_WIDTH; x++) {
-                ctx.moveTo(x * CELL_SIZE, 0);
-                ctx.lineTo(x * CELL_SIZE, GRID_HEIGHT * CELL_SIZE);
+            for (let x = startX; x <= endX; x++) {
+                const px = x * cellW + offsetX;
+                ctx.moveTo(px, 0); ctx.lineTo(px, canvas.height);
             }
-            for (let y = 0; y <= GRID_HEIGHT; y++) {
-                ctx.moveTo(0, y * CELL_SIZE);
-                ctx.lineTo(GRID_WIDTH * CELL_SIZE, y * CELL_SIZE);
+            for (let y = startY; y <= endY; y++) {
+                const py = y * cellH + offsetY;
+                ctx.moveTo(0, py); ctx.lineTo(canvas.width, py);
             }
             ctx.stroke();
             
-            // Draw live cells
-            ctx.fillStyle = COLORS.live;
-            for (let y = 0; y < GRID_HEIGHT; y++) {
-                for (let x = 0; x < GRID_WIDTH; x++) {
-                    if (getCell(x, y)) {
-                        // Add glow effect
-                        ctx.shadowColor = COLORS.live;
-                        ctx.shadowBlur = 5;
-                        ctx.fillRect(
-                            x * CELL_SIZE + 1, 
-                            y * CELL_SIZE + 1, 
-                            CELL_SIZE - 2, 
-                            CELL_SIZE - 2
-                        );
-                        ctx.shadowBlur = 0;
-                    }
-                }
-            }
-        }
-
-        // Animation loop
-        function animate(currentTime) {
-            if (!isRunning) return;
-            
-            if (currentTime - lastFrameTime >= frameInterval) {
-                step();
-                render();
-                lastFrameTime = currentTime;
-            }
-            
-            animationId = requestAnimationFrame(animate);
-        }
-
-        // Update stats display
-        function updateStats() {
-            document.getElementById('generation').textContent = generation;
-            document.getElementById('population').textContent = population;
-            document.getElementById('maxPopulation').textContent = maxPopulation;
-        }
-
-        // Update share URL
-        function updateShareURL() {
-            const liveCells = [];
-            for (let y = 0; y < GRID_HEIGHT; y++) {
-                for (let x = 0; x < GRID_WIDTH; x++) {
-                    if (getCell(x, y)) {
-                        liveCells.push(`${x},${y}`);
-                    }
-                }
-            }
-            
-            if (liveCells.length === 0) {
-                document.getElementById('shareUrl').value = '';
-                return;
-            }
-            
-            const params = new URLSearchParams();
-            params.set('cells', liveCells.join(';'));
-            params.set('gen', generation);
-            
-            const url = `${window.location.origin}${window.location.pathname}?${params.toString()}`;
-            document.getElementById('shareUrl').value = url;
-        }
-
-        // Load pattern from URL
-        function loadFromURL() {
-            const params = new URLSearchParams(window.location.search);
-            const cells = params.get('cells');
-            
-            if (cells) {
-                clear();
-                cells.split(';').forEach(coord => {
-                    const [x, y] = coord.split(',').map(Number);
-                    if (!isNaN(x) && !isNaN(y)) {
-                        setCell(x, y, 1);
-                    }
-                });
-                generation = parseInt(params.get('gen')) || 0;
-                updateStats();
-            }
-        }
-
-        // Place pattern on grid
-        function placePattern(patternName, offsetX, offsetY) {
-            const pattern = PATTERNS[patternName];
-            if (!pattern) return;
-            
-            for (const [x, y] of pattern) {
-                const finalX = offsetX + x;
-                const finalY = offsetY + y;
-                // Bounds check to prevent wrapping issues
-                if (finalX >= 0 && finalX < GRID_WIDTH && finalY >= 0 && finalY < GRID_HEIGHT) {
-                    setCell(finalX, finalY, 1);
-                }
-            }
-            
-            updateStats();
-            updateShareURL();
-            render();
-        }
-
-        // Clear grid
-        function clear() {
-            grid.fill(0);
-            generation = 0;
-            population = 0;
-            maxPopulation = 0;
-            updateStats();
-            updateShareURL();
-            render();
-        }
-
-        // Random seed
-        function randomSeed() {
-            clear();
-            for (let i = 0; i < grid.length; i++) {
-                grid[i] = Math.random() > 0.85 ? 1 : 0;
-            }
-            
-            population = grid.reduce((a, b) => a + b, 0);
-            maxPopulation = population;
-            updateStats();
-            updateShareURL();
-            render();
-        }
-
-        // Get grid coordinates from mouse event
-        function getGridCoords(e) {
-            const rect = canvas.getBoundingClientRect();
-            const x = Math.floor((e.clientX - rect.left) / CELL_SIZE);
-            const y = Math.floor((e.clientY - rect.top) / CELL_SIZE);
-            return { x, y };
-        }
-
-        // Event listeners
-        document.getElementById('playPauseBtn').addEventListener('click', () => {
-            isRunning = !isRunning;
-            const btn = document.getElementById('playPauseBtn');
-            if (isRunning) {
-                btn.textContent = '⏸ Pause';
-                lastFrameTime = performance.now();
-                animate(lastFrameTime);
-            } else {
-                btn.textContent = '▶ Play';
-                cancelAnimationFrame(animationId);
-            }
-        });
-
-        document.getElementById('stepBtn').addEventListener('click', () => {
-            if (isRunning) {
-                isRunning = false;
-                document.getElementById('playPauseBtn').textContent = '▶ Play';
-                cancelAnimationFrame(animationId);
-            }
-            step();
-            render();
-        });
-
-        document.getElementById('resetBtn').addEventListener('click', () => {
-            if (isRunning) {
-                isRunning = false;
-                document.getElementById('playPauseBtn').textContent = '▶ Play';
-                cancelAnimationFrame(animationId);
-            }
-            loadFromURL();
-            if (!window.location.search) {
-                clear();
-            }
-            render();
-        });
-
-        document.getElementById('clearBtn').addEventListener('click', () => {
-            if (isRunning) {
-                isRunning = false;
-                document.getElementById('playPauseBtn').textContent = '▶ Play';
-                cancelAnimationFrame(animationId);
-            }
-            clear();
-        });
-
-        document.getElementById('randomBtn').addEventListener('click', () => {
-            if (isRunning) {
-                isRunning = false;
-                document.getElementById('playPauseBtn').textContent = '▶ Play';
-                cancelAnimationFrame(animationId);
-            }
-            randomSeed();
-        });
-
-        document.getElementById('speedSlider').addEventListener('input', (e) => {
-            const fps = parseInt(e.target.value);
-            frameInterval = 1000 / fps;
-            document.getElementById('speedValue').textContent = `${fps} FPS`;
-        });
-
-        document.getElementById('copyUrlBtn').addEventListener('click', () => {
-            const urlInput = document.getElementById('shareUrl');
-            if (urlInput.value) {
-                urlInput.select();
-                navigator.clipboard.writeText(urlInput.value).then(() => {
-                    const btn = document.getElementById('copyUrlBtn');
-                    const originalText = btn.textContent;
-                    btn.textContent = '✓ Copied!';
-                    setTimeout(() => {
-                        btn.textContent = originalText;
-                    }, 2000);
-                });
-            }
-        });
-
-        // Pattern buttons
-        document.querySelectorAll('.pattern-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                if (isRunning) {
-                    isRunning = false;
-                    document.getElementById('playPauseBtn').textContent = '▶ Play';
-                    cancelAnimationFrame(animationId);
-                }
-                
-                const pattern = e.target.dataset.pattern;
-                const offsetX = Math.floor(GRID_WIDTH / 2) - 10;
-                const offsetY = Math.floor(GRID_HEIGHT / 2) - 10;
-                
-                // Clear first, then place pattern
-                clear();
-                placePattern(pattern, offsetX, offsetY);
+            // Cells
+            ctx.fillStyle = '#58a6ff';
+            grid.forEach((_, key) => {
+                const [x, y] = key.split(',').map(Number);
+                if (x < startX || x > endX || y < startY || y > endY) return;
+                const px = x * cellW + offsetX;
+                const py = y * cellH + offsetY;
+                ctx.fillRect(px + 1, py + 1, cellW - 1, cellH - 1);
             });
-        });
-
-        // Canvas mouse events for drawing
-        canvas.addEventListener('mousedown', (e) => {
-            if (isRunning) return;
             
-            const { x, y } = getGridCoords(e);
-            if (e.button === 2) {
-                isErasing = true;
-                setCell(x, y, 0);
+            document.getElementById('zoom-level').textContent = Math.round(zoom * 100) + '%';
+            document.getElementById('zoom').textContent = Math.round(zoom * 100) + '%';
+        }
+
+        function loop(timestamp) {
+            if (isPlaying && timestamp - lastFrame > 1000 / speed) {
+                step();
+                lastFrame = timestamp;
+            }
+            requestAnimationFrame(loop);
+        }
+
+        // Mouse handling
+        let lastX, lastY, isDrawing;
+
+        function onMouseDown(e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            if (currentTool === 'pan') {
+                isDragging = true;
+                dragStartX = x - offsetX;
+                dragStartY = y - offsetY;
+                canvas.style.cursor = 'grabbing';
             } else {
                 isDrawing = true;
-                setCell(x, y, 1);
+                const cellX = Math.floor((x - offsetX) / (cellSize * zoom));
+                const cellY = Math.floor((y - offsetY) / (cellSize * zoom));
+                lastX = cellX; lastY = cellY;
+                
+                if (currentTool === 'draw') setCell(cellX, cellY, 1);
+                else if (currentTool === 'erase') setCell(cellX, cellY, 0);
+                updateStats();
+                render();
             }
-            updateStats();
-            updateShareURL();
-            render();
-        });
+        }
 
-        canvas.addEventListener('mousemove', (e) => {
-            if (!isDrawing && !isErasing) return;
+        function onMouseMove(e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            const cellX = Math.floor((x - offsetX) / (cellSize * zoom));
+            const cellY = Math.floor((y - offsetY) / (cellSize * zoom));
+            document.getElementById('pos').textContent = `${cellX}, ${cellY}`;
             
-            const { x, y } = getGridCoords(e);
-            if (isDrawing) {
-                setCell(x, y, 1);
-            } else if (isErasing) {
-                setCell(x, y, 0);
+            if (isDragging) {
+                offsetX = x - dragStartX;
+                offsetY = y - dragStartY;
+                render();
+            } else if (isDrawing && (cellX !== lastX || cellY !== lastY)) {
+                lastX = cellX; lastY = cellY;
+                if (currentTool === 'draw') setCell(cellX, cellY, 1);
+                else if (currentTool === 'erase') setCell(cellX, cellY, 0);
+                updateStats();
+                render();
             }
-            updateStats();
-            updateShareURL();
-            render();
-        });
+        }
 
-        canvas.addEventListener('mouseup', () => {
+        function onMouseUp() {
+            isDragging = false;
             isDrawing = false;
-            isErasing = false;
-        });
+            if (currentTool === 'pan') canvas.style.cursor = 'grab';
+        }
 
-        canvas.addEventListener('mouseleave', () => {
-            isDrawing = false;
-            isErasing = false;
-        });
-
-        // Prevent context menu on right-click
-        canvas.addEventListener('contextmenu', (e) => {
+        function onWheel(e) {
             e.preventDefault();
-        });
+            const delta = e.deltaY > 0 ? 0.9 : 1.1;
+            zoom *= delta;
+            zoom = Math.max(0.1, Math.min(5, zoom));
+            render();
+        }
 
-        // Initialize
+        // Start
         init();
     </script>
 </body>
