@@ -1,8 +1,8 @@
-# Game of Life 🔬
+# LifeLab 🔬
 
 Conway's Game of Life — an advanced cellular automaton simulator with a comprehensive pattern library. Watch complex behaviors emerge from simple rules.
 
-**Live Demo**: https://qqshi13.github.io/game-of-life/
+**Live Demo**: https://qqshi13.github.io/lifelab/
 
 ## Features
 
