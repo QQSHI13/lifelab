@@ -43,37 +43,20 @@
         
         .main { display: flex; flex: 1; overflow: hidden; }
         
-        .sidebar {
+                .sidebar {
             width: 260px; background: var(--surface); border-right: 1px solid var(--border);
-            display: flex; flex-direction: column; overflow: hidden;
+            display: flex; flex-direction: column;
         }
         
-        .sidebar-section { border-bottom: 1px solid var(--border); display: flex; flex-direction: column; }
-        .sidebar-header { padding: 10px 14px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); background: rgba(0,0,0,0.2); flex-shrink: 0; }
-        .sidebar-content { padding: 10px; overflow-y: auto; }
+        .sidebar-top { flex-shrink: 0; border-bottom: 1px solid var(--border); }
+        .sidebar-middle { flex: 1; min-height: 0; display: flex; flex-direction: column; border-bottom: 1px solid var(--border); }
+        .sidebar-bottom { flex-shrink: 0; }
         
-        .pattern-section { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
-        .pattern-list-container { flex: 1; overflow-y: auto; padding: 10px; }
+        .sidebar-header { padding: 10px 14px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); background: rgba(0,0,0,0.2); }
+        .sidebar-content { padding: 10px; }
         
-        select, .pattern-btn {
-            width: 100%; padding: 8px 12px; background: var(--bg); border: 1px solid var(--border);
-            color: var(--text); border-radius: 6px; font-size: 13px; cursor: pointer; margin-bottom: 8px;
-        }
-        .pattern-btn { text-align: left; margin-bottom: 6px; font-size: 12px; }
-        .pattern-btn:hover { border-color: var(--accent); }
-        .pattern-btn .name { font-weight: 600; display: block; }
-        .pattern-btn .desc { font-size: 10px; color: var(--text-secondary); }
-        
-        .pattern-tabs { display: flex; gap: 4px; padding: 8px; border-bottom: 1px solid var(--border); overflow-x: auto; flex-shrink: 0; }
-        .tab { padding: 5px 10px; background: transparent; border: 1px solid transparent; color: var(--text-secondary); border-radius: 4px; cursor: pointer; font-size: 11px; white-space: nowrap; }
-        .tab:hover { background: var(--surface-hover); color: var(--text); }
-        .tab.active { background: var(--accent); color: white; }
-        
-        .stats-section { flex-shrink: 0; }
-        .stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; padding: 10px; }
-        .stat-box { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px; text-align: center; }
-        .stat-value { font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 700; color: var(--accent); }
-        .stat-label { font-size: 10px; color: var(--text-secondary); text-transform: uppercase; margin-top: 4px; }
+        .pattern-tabs { display: flex; gap: 4px; padding: 8px; border-bottom: 1px solid var(--border); overflow-x: auto; }
+        .pattern-list-scroll { flex: 1; overflow-y: auto; padding: 10px; min-height: 0; }
         
         .canvas-container { flex: 1; position: relative; background: var(--bg); overflow: hidden; cursor: crosshair; }
         #gridCanvas { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }
@@ -90,7 +73,24 @@
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: var(--bg); }
         ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-    </style>
+        
+        select, .pattern-btn {
+            width: 100%; padding: 8px 12px; background: var(--bg); border: 1px solid var(--border);
+            color: var(--text); border-radius: 6px; font-size: 13px; cursor: pointer; margin-bottom: 8px;
+        }
+        .pattern-btn { text-align: left; margin-bottom: 6px; font-size: 12px; }
+        .pattern-btn:hover { border-color: var(--accent); }
+        .pattern-btn .name { font-weight: 600; display: block; }
+        .pattern-btn .desc { font-size: 10px; color: var(--text-secondary); }
+        
+        .tab { padding: 5px 10px; background: transparent; border: 1px solid transparent; color: var(--text-secondary); border-radius: 4px; cursor: pointer; font-size: 11px; white-space: nowrap; }
+        .tab:hover { background: var(--surface-hover); color: var(--text); }
+        .tab.active { background: var(--accent); color: white; }
+        
+        .stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; padding: 10px; }
+        .stat-box { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px; text-align: center; }
+        .stat-value { font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 700; color: var(--accent); }
+        .stat-label { font-size: 10px; color: var(--text-secondary); text-transform: uppercase; margin-top: 4px; }
 </head>
 <body>
     <div class="header">
@@ -113,7 +113,7 @@
 
     <div class="main">
         <div class="sidebar">
-            <div class="sidebar-section">
+            <div class="sidebar-top">
                 <div class="sidebar-header">Rule Set</div>
                 <div class="sidebar-content">
                     <select id="rule-select">
@@ -125,7 +125,7 @@
                 </div>
             </div>
             
-            <div class="sidebar-section pattern-section">
+            <div class="sidebar-middle">
                 <div class="sidebar-header">Pattern Library</div>
                 <div class="pattern-tabs">
                     <button class="tab active" data-cat="guns">Guns</button>
@@ -134,10 +134,10 @@
                     <button class="tab" data-cat="still">Still</button>
                     <button class="tab" data-cat="meth">Meth</button>
                 </div>
-                <div class="pattern-list-container" id="pattern-list"></div>
+                <div class="pattern-list-scroll" id="pattern-list"></div>
             </div>
             
-            <div class="sidebar-section stats-section">
+            <div class="sidebar-bottom">
                 <div class="sidebar-header">Statistics</div>
                 <div class="stats">
                     <div class="stat-box"><div class="stat-value" id="pop">0</div><div class="stat-label">Population</div></div>
