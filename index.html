@@ -50,7 +50,7 @@
         
         .sidebar-section { border-bottom: 1px solid var(--border); }
         .sidebar-header { padding: 10px 14px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); background: rgba(0,0,0,0.2); }
-        .sidebar-content { padding: 10px; max-height: 180px; overflow-y: auto; }
+        .sidebar-content { padding: 10px; flex: 1; overflow-y: auto; }
         
         select, .pattern-btn {
             width: 100%; padding: 8px 12px; background: var(--bg); border: 1px solid var(--border);
@@ -200,6 +200,15 @@
             'B3678/S34678': { born: [3,6,7,8], survive: [3,4,6,7,8], name: 'Day & Night' }
         };
 
+        // Parse rule string like "B3/S23" or "B2/S"
+        function parseRule(ruleStr) {
+            const match = ruleStr.match(/B(\d*)\/?S?(\d*)/);
+            if (!match) return RULES['B3/S23'];
+            const born = match[1] ? match[1].split('').map(Number) : [];
+            const survive = match[2] ? match[2].split('').map(Number) : [];
+            return { born, survive, name: 'Custom' };
+        }
+
         // State
         let canvas, ctx, width, height, cellSize = 10, zoom = 1;
         let offsetX = 0, offsetY = 0, isDragging = false, dragStartX, dragStartY;
@@ -223,7 +232,11 @@
             document.getElementById('btn-reset').onclick = () => { clear(); generation = 0; updateStats(); };
             document.getElementById('btn-random').onclick = randomFill;
             document.getElementById('speed').oninput = (e) => { speed = parseInt(e.target.value); document.getElementById('speed-val').textContent = speed; };
-            document.getElementById('rule-select').onchange = (e) => { rule = RULES[e.target.value]; };
+            document.getElementById('rule-select').onchange = (e) => { 
+                const selected = e.target.value;
+                rule = RULES[selected] || parseRule(selected);
+                console.log('Rule changed:', rule);
+            };
             
             // Tools
             document.getElementById('tool-draw').onclick = () => setTool('draw');
