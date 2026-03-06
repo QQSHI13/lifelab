@@ -2,13 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LifeLab - Cellular Automaton Explorer</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔬</text></svg>">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
         
-        * { margin: 0; padding: 0; box-sizing: border-box; touch-action: none; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         
         :root {
             --bg: #0d1117; --surface: #161b22; --surface-hover: #21262d; --border: #30363d;
@@ -30,7 +30,7 @@
         .logo { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 700; color: var(--accent); }
         .logo-icon { width: 32px; height: 32px; background: linear-gradient(135deg, var(--accent), var(--success)); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
         
-        .controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .controls { display: flex; align-items: center; gap: 8px; }
         .btn { padding: 6px 14px; background: var(--surface-hover); border: 1px solid var(--border); color: var(--text); border-radius: 6px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 6px; transition: all 0.15s; }
         .btn:hover { background: var(--border); }
         .btn.primary { background: var(--success); border-color: var(--success); color: white; }
@@ -72,7 +72,7 @@
         .stat-label { font-size: 10px; color: var(--text-secondary); text-transform: uppercase; margin-top: 4px; }
         
         .canvas-container { flex: 1; position: relative; background: var(--bg); overflow: hidden; cursor: crosshair; }
-        #gridCanvas { display: block; }
+        #gridCanvas { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }
         
         .info-overlay { position: absolute; top: 12px; left: 12px; padding: 8px 12px; background: rgba(13,17,23,0.9); border: 1px solid var(--border); border-radius: 6px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-secondary); }
         .info-overlay span { color: var(--accent); }
@@ -83,27 +83,6 @@
         .tool-btn.active { background: var(--accent); border-color: var(--accent); color: white; }
         .zoom-display { display: flex; align-items: center; padding: 0 10px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-secondary); }
         
-        .share-btn { background: var(--accent); border-color: var(--accent); color: white; }
-        
-        /* Mobile responsive */
-        @media (max-width: 768px) {
-            .header { padding: 8px 12px; gap: 10px; }
-            .logo span { display: none; }
-            .sidebar { width: 200px; }
-            .speed-control input { width: 60px; }
-            .gen-counter { font-size: 14px; }
-            .btn { padding: 5px 10px; font-size: 12px; }
-        }
-        
-        @media (max-width: 480px) {
-            .sidebar { position: absolute; bottom: 70px; left: 10px; width: calc(100% - 20px); max-height: 200px; z-index: 100; border-radius: 8px; display: none; }
-            .sidebar.visible { display: flex; }
-            .mobile-toggle { display: flex !important; }
-            .header { flex-wrap: wrap; }
-        }
-        
-        .mobile-toggle { display: none; }
-        
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: var(--bg); }
         ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
@@ -113,13 +92,12 @@
     <div class="header">
         <div class="logo"><div class="logo-icon">🔬</div><span>LifeLab</span></div>
         <div class="controls">
-            <button class="btn btn-icon" id="btn-reset" title="Reset (R)">↺</button>
-            <button class="btn btn-icon" id="btn-clear" title="Clear (C)">🗑</button>
-            <button class="btn btn-icon" id="btn-step-back" title="Step Back (Z)">⏮</button>
-            <button class="btn primary" id="btn-play" title="Play/Pause (Space)"><span id="play-icon">▶</span></button>
-            <button class="btn btn-icon" id="btn-step" title="Step (S)">⏭</button>
-            <button class="btn btn-icon" id="btn-random" title="Random (N)">🎲</button>
-            <button class="btn btn-icon share-btn" id="btn-share" title="Share URL">🔗</button>
+            <button class="btn btn-icon" id="btn-reset" title="Reset">↺</button>
+            <button class="btn btn-icon" id="btn-clear" title="Clear">🗑</button>
+            <button class="btn btn-icon" id="btn-step-back" title="Step Back">⏮</button>
+            <button class="btn primary" id="btn-play"><span id="play-icon">▶</span></button>
+            <button class="btn btn-icon" id="btn-step" title="Step">⏭</button>
+            <button class="btn btn-icon" id="btn-random" title="Random">🎲</button>
             <div class="speed-control">
                 <span class="speed-label">Speed</span>
                 <input type="range" id="speed" min="1" max="60" value="20">
@@ -127,11 +105,10 @@
             </div>
         </div>
         <div class="gen-counter">Gen: <span id="gen">0</span></div>
-        <button class="btn btn-icon mobile-toggle" id="btn-sidebar">☰</button>
     </div>
 
     <div class="main">
-        <div class="sidebar" id="sidebar">
+        <div class="sidebar">
             <div class="sidebar-section">
                 <div class="sidebar-header">Rule Set</div>
                 <div class="sidebar-content">
@@ -171,9 +148,9 @@
             <canvas id="gridCanvas"></canvas>
             <div class="info-overlay">Pos: <span id="pos">0, 0</span> | Zoom: <span id="zoom">100%</span></div>
             <div class="toolbar">
-                <button class="tool-btn active" id="tool-draw" title="Draw (D)">✏️</button>
-                <button class="tool-btn" id="tool-erase" title="Erase (E)">🧼</button>
-                <button class="tool-btn" id="tool-pan" title="Pan (P)">✋</button>
+                <button class="tool-btn active" id="tool-draw" title="Draw">✏️</button>
+                <button class="tool-btn" id="tool-erase" title="Erase">🧼</button>
+                <button class="tool-btn" id="tool-pan" title="Pan">✋</button>
                 <div style="width: 1px; background: var(--border); margin: 4px;"></div>
                 <button class="tool-btn" id="zoom-out">−</button>
                 <div class="zoom-display" id="zoom-level">100%</div>
@@ -230,27 +207,21 @@
         let grid = new Map(), history = [], currentTool = 'draw';
         let rule = RULES['B3/S23'];
         let population = 0, births = 0, deaths = 0;
-        let dpr = window.devicePixelRatio || 1;
 
         // Init
         function init() {
             canvas = document.getElementById('gridCanvas');
             ctx = canvas.getContext('2d');
-            
-            // Setup high-DPI canvas
-            setupCanvas();
-            
-            window.addEventListener('resize', () => { setupCanvas(); render(); });
+            resize();
+            window.addEventListener('resize', resize);
             
             // Controls
             document.getElementById('btn-play').onclick = togglePlay;
             document.getElementById('btn-step').onclick = step;
             document.getElementById('btn-step-back').onclick = stepBack;
             document.getElementById('btn-clear').onclick = clear;
-            document.getElementById('btn-reset').onclick = reset;
+            document.getElementById('btn-reset').onclick = () => { clear(); generation = 0; updateStats(); };
             document.getElementById('btn-random').onclick = randomFill;
-            document.getElementById('btn-share').onclick = shareGrid;
-            document.getElementById('btn-sidebar').onclick = toggleSidebar;
             document.getElementById('speed').oninput = (e) => { speed = parseInt(e.target.value); document.getElementById('speed-val').textContent = speed; };
             document.getElementById('rule-select').onchange = (e) => { rule = RULES[e.target.value]; };
             
@@ -258,8 +229,8 @@
             document.getElementById('tool-draw').onclick = () => setTool('draw');
             document.getElementById('tool-erase').onclick = () => setTool('erase');
             document.getElementById('tool-pan').onclick = () => setTool('pan');
-            document.getElementById('zoom-in').onclick = () => zoomAt(1.2, canvas.width / 2 / dpr, canvas.height / 2 / dpr);
-            document.getElementById('zoom-out').onclick = () => zoomAt(1 / 1.2, canvas.width / 2 / dpr, canvas.height / 2 / dpr);
+            document.getElementById('zoom-in').onclick = () => { zoom *= 1.2; render(); };
+            document.getElementById('zoom-out').onclick = () => { zoom /= 1.2; render(); };
             
             // Pattern tabs
             document.querySelectorAll('.tab').forEach(tab => {
@@ -270,87 +241,24 @@
                 };
             });
             
-            // Mouse interaction
-            canvas.addEventListener('mousedown', onMouseDown);
-            canvas.addEventListener('mousemove', onMouseMove);
-            canvas.addEventListener('mouseup', onMouseUp);
-            canvas.addEventListener('mouseleave', onMouseUp);
-            canvas.addEventListener('wheel', onWheel, { passive: false });
-            
-            // Touch interaction
-            canvas.addEventListener('touchstart', onTouchStart, { passive: false });
-            canvas.addEventListener('touchmove', onTouchMove, { passive: false });
-            canvas.addEventListener('touchend', onTouchEnd);
-            canvas.addEventListener('touchcancel', onTouchEnd);
-            
-            // Keyboard shortcuts
-            document.addEventListener('keydown', onKeyDown);
-            
-            // Load from URL hash if present
-            loadFromHash();
+            // Canvas interaction
+            canvas.onmousedown = onMouseDown;
+            canvas.onmousemove = onMouseMove;
+            canvas.onmouseup = onMouseUp;
+            canvas.onwheel = onWheel;
             
             renderPatterns('guns');
             render();
             requestAnimationFrame(loop);
         }
-        
-        function setupCanvas() {
-            const container = document.getElementById('container');
-            dpr = window.devicePixelRatio || 1;
-            
-            // Set display size
-            const displayWidth = container.clientWidth;
-            const displayHeight = container.clientHeight;
-            
-            // Set actual size (scaled for DPR)
-            canvas.width = displayWidth * dpr;
-            canvas.height = displayHeight * dpr;
-            
-            // Set display size via CSS
-            canvas.style.width = displayWidth + 'px';
-            canvas.style.height = displayHeight + 'px';
-            
-            // Scale context for DPR
-            ctx.scale(dpr, dpr);
-            
-            width = Math.ceil(displayWidth / cellSize);
-            height = Math.ceil(displayHeight / cellSize);
-        }
-        
-        function toggleSidebar() {
-            document.getElementById('sidebar').classList.toggle('visible');
-        }
 
-        function reset() {
-            saveHistory();
-            grid.clear();
-            generation = 0;
-            offsetX = 0;
-            offsetY = 0;
-            zoom = 1;
-            updateStats();
+        function resize() {
+            const container = document.getElementById('container');
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            width = Math.ceil(canvas.width / cellSize);
+            height = Math.ceil(canvas.height / cellSize);
             render();
-        }
-        
-        function onKeyDown(e) {
-            // Don't trigger shortcuts when typing in inputs
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
-            
-            switch(e.key.toLowerCase()) {
-                case ' ': e.preventDefault(); togglePlay(); break;
-                case 's': step(); break;
-                case 'z': if (e.ctrlKey || e.metaKey) { e.preventDefault(); stepBack(); } else stepBack(); break;
-                case 'c': clear(); break;
-                case 'r': reset(); break;
-                case 'n': randomFill(); break;
-                case 'd': setTool('draw'); break;
-                case 'e': setTool('erase'); break;
-                case 'p': setTool('pan'); break;
-                case 'arrowup': offsetY += 50; render(); break;
-                case 'arrowdown': offsetY -= 50; render(); break;
-                case 'arrowleft': offsetX += 50; render(); break;
-                case 'arrowright': offsetX -= 50; render(); break;
-            }
         }
 
         function setTool(tool) {
@@ -374,18 +282,12 @@
 
         function loadPattern(pattern) {
             saveHistory();
-            // Place at center of current view
-            const displayWidth = canvas.width / dpr;
-            const displayHeight = canvas.height / dpr;
-            const centerX = Math.floor((-offsetX + displayWidth / 2) / (cellSize * zoom));
-            const centerY = Math.floor((-offsetY + displayHeight / 2) / (cellSize * zoom));
-            
+            const cx = Math.floor(width / 2), cy = Math.floor(height / 2);
             pattern.cells.forEach(([x, y]) => {
-                grid.set(`${centerX + x},${centerY + y}`, 1);
+                grid.set(`${cx + x},${cy + y}`, 1);
             });
             updateStats();
             render();
-            updateHash();
         }
 
         function getCell(x, y) {
@@ -445,7 +347,6 @@
             generation++;
             updateStats();
             render();
-            updateHash();
         }
 
         function saveHistory() {
@@ -459,7 +360,6 @@
             generation = Math.max(0, generation - 1);
             updateStats();
             render();
-            updateHash();
         }
 
         function clear() {
@@ -468,27 +368,18 @@
             generation = 0;
             updateStats();
             render();
-            updateHash();
         }
 
         function randomFill() {
             saveHistory();
             grid.clear();
-            const displayWidth = canvas.width / dpr;
-            const displayHeight = canvas.height / dpr;
-            const cols = Math.ceil(displayWidth / (cellSize * zoom));
-            const rows = Math.ceil(displayHeight / (cellSize * zoom));
-            const startX = Math.floor(-offsetX / (cellSize * zoom));
-            const startY = Math.floor(-offsetY / (cellSize * zoom));
-            
-            for (let y = 0; y < rows; y++) {
-                for (let x = 0; x < cols; x++) {
-                    if (Math.random() < 0.15) grid.set(`${startX + x},${startY + y}`, 1);
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    if (Math.random() < 0.15) grid.set(`${x},${y}`, 1);
                 }
             }
             updateStats();
             render();
-            updateHash();
         }
 
         function togglePlay() {
@@ -502,26 +393,19 @@
             document.getElementById('births').textContent = births;
             document.getElementById('deaths').textContent = deaths;
             document.getElementById('gen').textContent = generation;
-            
-            const displayWidth = canvas.width / dpr;
-            const displayHeight = canvas.height / dpr;
-            const visibleCells = Math.ceil(displayWidth / (cellSize * zoom)) * Math.ceil(displayHeight / (cellSize * zoom));
-            document.getElementById('density').textContent = visibleCells > 0 ? Math.round(population / visibleCells * 100) + '%' : '0%';
+            document.getElementById('density').textContent = Math.round(population / (width * height) * 100) + '%';
         }
 
         function render() {
-            const displayWidth = canvas.width / dpr;
-            const displayHeight = canvas.height / dpr;
-            
             ctx.fillStyle = '#0d1117';
-            ctx.fillRect(0, 0, displayWidth, displayHeight);
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
             
             const cellW = cellSize * zoom;
             const cellH = cellSize * zoom;
             const startX = Math.floor(-offsetX / cellW);
             const startY = Math.floor(-offsetY / cellH);
-            const endX = startX + Math.ceil(displayWidth / cellW) + 1;
-            const endY = startY + Math.ceil(displayHeight / cellH) + 1;
+            const endX = startX + Math.ceil(canvas.width / cellW) + 1;
+            const endY = startY + Math.ceil(canvas.height / cellH) + 1;
             
             // Grid lines
             ctx.strokeStyle = '#21262d';
@@ -529,11 +413,11 @@
             ctx.beginPath();
             for (let x = startX; x <= endX; x++) {
                 const px = x * cellW + offsetX;
-                ctx.moveTo(px, 0); ctx.lineTo(px, displayHeight);
+                ctx.moveTo(px, 0); ctx.lineTo(px, canvas.height);
             }
             for (let y = startY; y <= endY; y++) {
                 const py = y * cellH + offsetY;
-                ctx.moveTo(0, py); ctx.lineTo(displayWidth, py);
+                ctx.moveTo(0, py); ctx.lineTo(canvas.width, py);
             }
             ctx.stroke();
             
@@ -559,14 +443,6 @@
             requestAnimationFrame(loop);
         }
 
-        // Coordinate conversion helpers
-        function screenToCell(screenX, screenY) {
-            return {
-                x: Math.floor((screenX - offsetX) / (cellSize * zoom)),
-                y: Math.floor((screenY - offsetY) / (cellSize * zoom))
-            };
-        }
-
         // Mouse handling
         let lastX, lastY, isDrawing;
 
@@ -582,14 +458,14 @@
                 canvas.style.cursor = 'grabbing';
             } else {
                 isDrawing = true;
-                const cell = screenToCell(x, y);
-                lastX = cell.x; lastY = cell.y;
+                const cellX = Math.floor((x - offsetX) / (cellSize * zoom));
+                const cellY = Math.floor((y - offsetY) / (cellSize * zoom));
+                lastX = cellX; lastY = cellY;
                 
-                if (currentTool === 'draw') setCell(cell.x, cell.y, 1);
-                else if (currentTool === 'erase') setCell(cell.x, cell.y, 0);
+                if (currentTool === 'draw') setCell(cellX, cellY, 1);
+                else if (currentTool === 'erase') setCell(cellX, cellY, 0);
                 updateStats();
                 render();
-                updateHash();
             }
         }
 
@@ -597,20 +473,20 @@
             const rect = canvas.getBoundingClientRect();
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
-            const cell = screenToCell(x, y);
-            document.getElementById('pos').textContent = `${cell.x}, ${cell.y}`;
+            const cellX = Math.floor((x - offsetX) / (cellSize * zoom));
+            const cellY = Math.floor((y - offsetY) / (cellSize * zoom));
+            document.getElementById('pos').textContent = `${cellX}, ${cellY}`;
             
             if (isDragging) {
                 offsetX = x - dragStartX;
                 offsetY = y - dragStartY;
                 render();
-            } else if (isDrawing && (cell.x !== lastX || cell.y !== lastY)) {
-                lastX = cell.x; lastY = cell.y;
-                if (currentTool === 'draw') setCell(cell.x, cell.y, 1);
-                else if (currentTool === 'erase') setCell(cell.x, cell.y, 0);
+            } else if (isDrawing && (cellX !== lastX || cellY !== lastY)) {
+                lastX = cellX; lastY = cellY;
+                if (currentTool === 'draw') setCell(cellX, cellY, 1);
+                else if (currentTool === 'erase') setCell(cellX, cellY, 0);
                 updateStats();
                 render();
-                updateHash();
             }
         }
 
@@ -622,190 +498,10 @@
 
         function onWheel(e) {
             e.preventDefault();
-            const rect = canvas.getBoundingClientRect();
-            const mouseX = e.clientX - rect.left;
-            const mouseY = e.clientY - rect.top;
             const delta = e.deltaY > 0 ? 0.9 : 1.1;
-            zoomAt(delta, mouseX, mouseY);
-        }
-        
-        function zoomAt(factor, screenX, screenY) {
-            const newZoom = Math.max(0.1, Math.min(5, zoom * factor));
-            if (newZoom === zoom) return;
-            
-            // Zoom towards the point
-            const cellX = (screenX - offsetX) / (cellSize * zoom);
-            const cellY = (screenY - offsetY) / (cellSize * zoom);
-            
-            offsetX = screenX - cellX * cellSize * newZoom;
-            offsetY = screenY - cellY * cellSize * newZoom;
-            zoom = newZoom;
-            
+            zoom *= delta;
+            zoom = Math.max(0.1, Math.min(5, zoom));
             render();
-        }
-
-        // Touch handling for mobile
-        let touchStartDist = 0;
-        let touchStartZoom = 1;
-        let lastTouchX = 0;
-        let lastTouchY = 0;
-        let touchMode = 'none'; // 'none', 'pan', 'draw', 'pinch'
-
-        function getTouchDistance(touches) {
-            const dx = touches[0].clientX - touches[1].clientX;
-            const dy = touches[0].clientY - touches[1].clientY;
-            return Math.sqrt(dx * dx + dy * dy);
-        }
-
-        function onTouchStart(e) {
-            e.preventDefault();
-            const rect = canvas.getBoundingClientRect();
-            
-            if (e.touches.length === 2) {
-                touchMode = 'pinch';
-                touchStartDist = getTouchDistance(e.touches);
-                touchStartZoom = zoom;
-            } else if (e.touches.length === 1) {
-                const x = e.touches[0].clientX - rect.left;
-                const y = e.touches[0].clientY - rect.top;
-                
-                if (currentTool === 'pan') {
-                    touchMode = 'pan';
-                    lastTouchX = x;
-                    lastTouchY = y;
-                } else {
-                    touchMode = 'draw';
-                    const cell = screenToCell(x, y);
-                    lastX = cell.x; lastY = cell.y;
-                    if (currentTool === 'draw') setCell(cell.x, cell.y, 1);
-                    else if (currentTool === 'erase') setCell(cell.x, cell.y, 0);
-                    updateStats();
-                    render();
-                    updateHash();
-                }
-            }
-        }
-
-        function onTouchMove(e) {
-            e.preventDefault();
-            const rect = canvas.getBoundingClientRect();
-            
-            if (e.touches.length === 2 && touchMode === 'pinch') {
-                const dist = getTouchDistance(e.touches);
-                const factor = dist / touchStartDist;
-                const centerX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
-                const centerY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
-                zoomAt(factor / (zoom / touchStartZoom), centerX, centerY);
-                touchStartDist = dist;
-                touchStartZoom = zoom;
-            } else if (e.touches.length === 1) {
-                const x = e.touches[0].clientX - rect.left;
-                const y = e.touches[0].clientY - rect.top;
-                
-                if (touchMode === 'pan') {
-                    offsetX += x - lastTouchX;
-                    offsetY += y - lastTouchY;
-                    lastTouchX = x;
-                    lastTouchY = y;
-                    render();
-                } else if (touchMode === 'draw') {
-                    const cell = screenToCell(x, y);
-                    if (cell.x !== lastX || cell.y !== lastY) {
-                        lastX = cell.x; lastY = cell.y;
-                        if (currentTool === 'draw') setCell(cell.x, cell.y, 1);
-                        else if (currentTool === 'erase') setCell(cell.x, cell.y, 0);
-                        updateStats();
-                        render();
-                        updateHash();
-                    }
-                }
-                
-                const cell = screenToCell(x, y);
-                document.getElementById('pos').textContent = `${cell.x}, ${cell.y}`;
-            }
-        }
-
-        function onTouchEnd(e) {
-            if (e.touches.length === 0) {
-                touchMode = 'none';
-            } else if (e.touches.length === 1 && touchMode === 'pinch') {
-                // Switch back to draw/pan mode after pinch
-                const rect = canvas.getBoundingClientRect();
-                const x = e.touches[0].clientX - rect.left;
-                const y = e.touches[0].clientY - rect.top;
-                if (currentTool === 'pan') {
-                    touchMode = 'pan';
-                    lastTouchX = x;
-                    lastTouchY = y;
-                } else {
-                    touchMode = 'draw';
-                }
-            }
-        }
-        
-        // URL sharing
-        function gridToString() {
-            if (grid.size === 0) return '';
-            const cells = Array.from(grid.keys()).sort();
-            return cells.join(';');
-        }
-        
-        function stringToGrid(str) {
-            grid.clear();
-            if (!str) return;
-            str.split(';').forEach(key => {
-                if (key) grid.set(key, 1);
-            });
-        }
-        
-        function updateHash() {
-            if (grid.size === 0) {
-                history.replaceState(null, null, ' ');
-                return;
-            }
-            const data = {
-                g: gridToString(),
-                gen: generation,
-                zoom: Math.round(zoom * 100) / 100,
-                ox: Math.round(offsetX),
-                oy: Math.round(offsetY)
-            };
-            const hash = btoa(JSON.stringify(data)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-            history.replaceState(null, null, '#' + hash);
-        }
-        
-        function loadFromHash() {
-            if (!location.hash) return;
-            try {
-                const hash = location.hash.slice(1).replace(/-/g, '+').replace(/_/g, '/');
-                const padding = 4 - (hash.length % 4);
-                const paddedHash = padding === 4 ? hash : hash + '='.repeat(padding);
-                const data = JSON.parse(atob(paddedHash));
-                
-                if (data.g) stringToGrid(data.g);
-                if (data.gen !== undefined) generation = data.gen;
-                if (data.zoom !== undefined) zoom = data.zoom;
-                if (data.ox !== undefined) offsetX = data.ox;
-                if (data.oy !== undefined) offsetY = data.oy;
-                
-                updateStats();
-            } catch (e) {
-                console.error('Failed to load from hash:', e);
-            }
-        }
-        
-        function shareGrid() {
-            updateHash();
-            const url = location.href;
-            if (navigator.clipboard) {
-                navigator.clipboard.writeText(url).then(() => {
-                    alert('Link copied to clipboard!');
-                }).catch(() => {
-                    prompt('Copy this link:', url);
-                });
-            } else {
-                prompt('Copy this link:', url);
-            }
         }
 
         // Start
