@@ -97,7 +97,6 @@
     <div class="header">
         <div class="logo"><div class="logo-icon">🔬</div><span>LifeLab</span></div>
         <div class="controls">
-            <button class="btn btn-icon" id="btn-reset" title="Reset">↺</button>
             <button class="btn btn-icon" id="btn-clear" title="Clear">🗑</button>
             <button class="btn btn-icon" id="btn-step-back" title="Step Back">⏮</button>
             <button class="btn primary" id="btn-play"><span id="play-icon">▶</span></button>
@@ -233,8 +232,7 @@
             document.getElementById('btn-play').onclick = togglePlay;
             document.getElementById('btn-step').onclick = step;
             document.getElementById('btn-step-back').onclick = stepBack;
-            document.getElementById('btn-clear').onclick = clear;
-            document.getElementById('btn-reset').onclick = () => { clear(); generation = 0; updateStats(); };
+            document.getElementById('btn-clear').onclick = () => { clear(); generation = 0; updateStats(); };
             document.getElementById('btn-random').onclick = randomFill;
             document.getElementById('speed').oninput = (e) => { speed = parseInt(e.target.value); document.getElementById('speed-val').textContent = speed; };
             document.getElementById('rule-select').onchange = (e) => { 
