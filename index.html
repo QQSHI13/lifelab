@@ -91,12 +91,33 @@
         .stat-box { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px; text-align: center; }
         .stat-value { font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 700; color: var(--accent); }
         .stat-label { font-size: 10px; color: var(--text-secondary); text-transform: uppercase; margin-top: 4px; }
+        
+        /* Settings Modal */
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: none; align-items: center; justify-content: center; z-index: 1000; }
+        .modal-overlay.active { display: flex; }
+        .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; width: 90%; max-width: 500px; max-height: 80vh; overflow: hidden; display: flex; flex-direction: column; }
+        .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--border); }
+        .modal-title { font-size: 18px; font-weight: 600; }
+        .modal-close { background: none; border: none; color: var(--text-secondary); font-size: 20px; cursor: pointer; padding: 4px; }
+        .modal-close:hover { color: var(--text); }
+        .modal-content { padding: 20px; overflow-y: auto; }
+        .modal-section { margin-bottom: 24px; }
+        .modal-section:last-child { margin-bottom: 0; }
+        .modal-section-title { font-size: 14px; font-weight: 600; color: var(--accent); margin-bottom: 12px; text-transform: uppercase; }
+        .hint-item { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+        .hint-item:last-child { border-bottom: none; }
+        .hint-key { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 4px 8px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--accent); min-width: 60px; text-align: center; }
+        .hint-text { font-size: 13px; color: var(--text-secondary); }
+        .rule-info { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-top: 8px; }
+        .rule-name { font-weight: 600; color: var(--accent); margin-bottom: 4px; }
+        .rule-desc { font-size: 12px; color: var(--text-secondary); line-height: 1.5; }
     </style>
 </head>
 <body>
     <div class="header">
         <div class="logo"><div class="logo-icon">🔬</div><span>LifeLab</span></div>
         <div class="controls">
+            <button class="btn btn-icon" id="btn-settings" title="Settings">⚙️</button>
             <button class="btn btn-icon" id="btn-clear" title="Clear">🗑</button>
             <button class="btn btn-icon" id="btn-step-back" title="Step Back">⏮</button>
             <button class="btn primary" id="btn-play"><span id="play-icon">▶</span></button>
@@ -163,6 +184,85 @@
         </div>
     </div>
 
+    <!-- Settings Modal -->
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title">Settings & Help</div>
+                <button class="modal-close" id="btn-close-settings">×</button>
+            </div>
+            <div class="modal-content">
+                <div class="modal-section">
+                    <div class="modal-section-title">Keyboard Shortcuts</div>
+                    <div class="hint-item">
+                        <div class="hint-key">Space</div>
+                        <div class="hint-text">Hold to pan the canvas (or use middle mouse button)</div>
+                    </div>
+                    <div class="hint-item">
+                        <div class="hint-key">Click</div>
+                        <div class="hint-text">Draw or erase cells depending on selected tool</div>
+                    </div>
+                    <div class="hint-item">
+                        <div class="hint-key">Scroll>
+                        <div class="hint-text">Zoom in/out on the canvas</div>
+                    </div>
+                    <div class="hint-item">
+                        <div class="hint-key">Play</div>
+                        <div class="hint-text">Start/pause the simulation</div>
+                    </div>
+                    <div class="hint-item">
+                        <div class="hint-key">Step</div>
+                        <div class="hint-text">Advance one generation manually</div>
+                    </div>
+                </div>
+
+                <div class="modal-section">
+                    <div class="modal-section-title">Rule Sets</div>
+                    
+                    <div class="rule-info">
+                        <div class="rule-name">Conway's Life (B3/S23)</div>
+                        <div class="rule-desc">The classic cellular automaton. Cells are born with 3 neighbors and survive with 2 or 3. Most patterns work with this rule.</div>
+                    </div>
+                    
+                    <div class="rule-info">
+                        <div class="rule-name">HighLife (B36/S23)>
+                        <div class="rule-desc">Like Conway's but cells also born with 6 neighbors. Famous for the Replicator pattern that copies itself!</div>
+                    </div>
+                    
+                    <div class="rule-info">
+                        <div class="rule-name">Seeds (B2/S)</div>
+                        <div class="rule-desc">Explosive rule where cells are born with 2 neighbors but never survive. Creates expanding patterns.</div>
+                    </div>
+                    
+                    <div class="rule-info">
+                        <div class="rule-name">Day & Night (B3678/S34678)</div>
+                        <div class="rule-desc">Symmetric rule where dead and alive cells behave similarly. Supports complex spaceships.</div>
+                    </div>
+                </div>
+
+                <div class="modal-section">
+                    <div class="modal-section-title">Pattern Tips</div>
+                    <div class="hint-item">
+                        <div class="hint-key">Guns</div>
+                        <div class="hint-text">Patterns that shoot moving spaceships (gliders) periodically</div>
+                    </div>
+                    <div class="hint-item">
+                        <div class="hint-key">Ships</div>
+                        <div class="hint-text">Moving patterns that travel across the grid. Gliders move diagonally.</div>
+                    </div>
+                    <div class="hint-item">
+                        <div class="hint-key">Osc</div>
+                        <div class="hint-text">Oscillators that cycle through states periodically without moving</div>
+                    </div>
+                    <div class="hint-item">
+                        <div class="hint-key">Meth</div>
+                        <div class="hint-text">Methuselahs - small patterns that evolve for many generations before stabilizing</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         // Pattern Library
         const PATTERNS = {
@@ -176,7 +276,7 @@
                 { name: 'MWSS', desc: 'Middleweight', cells: [[1,0],[2,0],[3,0],[4,0],[5,0],[0,1],[5,1],[5,2],[0,3],[4,3],[2,4]], rule: 'B3/S23' },
                 { name: 'HWSS', desc: 'Heavyweight', cells: [[1,0],[2,0],[3,0],[4,0],[5,0],[6,0],[0,1],[6,1],[6,2],[0,3],[5,3],[2,4]], rule: 'B3/S23' },
                 { name: 'Replicator', desc: 'Self-replicating', cells: [[0,0],[1,0],[2,0],[3,0],[4,0],[0,1],[4,1],[0,2],[2,2],[4,2],[0,3],[4,3],[0,4],[1,4],[2,4],[3,4],[4,4]], rule: 'B36/S23' },
-                { name: ' bomber', desc: 'Glider shuttle', cells: [[0,1],[1,0],[1,2],[2,0],[2,2],[3,1],[5,1],[6,0],[6,2],[7,0],[7,2],[8,1]], rule: 'B36/S23' }
+                { name: 'Bomber', desc: 'Glider shuttle', cells: [[0,1],[1,0],[1,2],[2,0],[2,2],[3,1],[5,1],[6,0],[6,2],[7,0],[7,2],[8,1]], rule: 'B36/S23' }
             ],
             osc: [
                 { name: 'Blinker', desc: 'Period 2', cells: [[0,1],[1,1],[2,1]], rule: 'B3/S23' },
@@ -256,6 +356,12 @@
             document.getElementById('tool-pan').onclick = () => setTool('pan');
             document.getElementById('zoom-in').onclick = () => { zoom *= 1.2; render(); };
             document.getElementById('zoom-out').onclick = () => { zoom /= 1.2; render(); };
+            
+            // Settings modal
+            const settingsModal = document.getElementById('settingsModal');
+            document.getElementById('btn-settings').onclick = () => settingsModal.classList.add('active');
+            document.getElementById('btn-close-settings').onclick = () => settingsModal.classList.remove('active');
+            settingsModal.onclick = (e) => { if (e.target === settingsModal) settingsModal.classList.remove('active'); };
             
             // Pattern tabs
             document.querySelectorAll('.tab').forEach(tab => {
