@@ -167,32 +167,33 @@
         // Pattern Library
         const PATTERNS = {
             guns: [
-                { name: 'Gosper Gun', desc: 'First glider gun', cells: [[0,4],[0,5],[1,4],[1,5],[10,4],[10,5],[10,6],[11,3],[11,7],[12,2],[12,8],[13,2],[13,8],[14,5],[15,3],[15,7],[16,4],[16,5],[16,6],[17,5],[20,2],[20,3],[20,4],[21,2],[21,3],[21,4],[22,1],[22,5],[24,0],[24,1],[24,5],[24,6],[34,2],[34,3],[35,2],[35,3]] },
-                { name: 'Simkin Gun', desc: 'Smaller gun', cells: [[0,0],[0,1],[1,0],[1,1],[7,0],[7,1],[8,0],[8,1],[4,4],[4,5],[5,4],[5,5],[14,2],[14,3],[14,4],[15,1],[15,5],[16,0],[16,6],[17,0],[17,6],[18,3],[19,1],[19,5],[20,2],[20,3],[20,4]] }
+                { name: 'Gosper Gun', desc: 'First glider gun', cells: [[0,4],[0,5],[1,4],[1,5],[10,4],[10,5],[10,6],[11,3],[11,7],[12,2],[12,8],[13,2],[13,8],[14,5],[15,3],[15,7],[16,4],[16,5],[16,6],[17,5],[20,2],[20,3],[20,4],[21,2],[21,3],[21,4],[22,1],[22,5],[24,0],[24,1],[24,5],[24,6],[34,2],[34,3],[35,2],[35,3]], rule: 'B3/S23' },
+                { name: 'Simkin Gun', desc: 'Smaller gun', cells: [[0,0],[0,1],[1,0],[1,1],[7,0],[7,1],[8,0],[8,1],[4,4],[4,5],[5,4],[5,5],[14,2],[14,3],[14,4],[15,1],[15,5],[16,0],[16,6],[17,0],[17,6],[18,3],[19,1],[19,5],[20,2],[20,3],[20,4]], rule: 'B3/S23' }
             ],
             ships: [
-                { name: 'Glider', desc: 'Period 4', cells: [[1,0],[2,1],[0,2],[1,2],[2,2]] },
-                { name: 'LWSS', desc: 'Lightweight', cells: [[0,1],[3,1],[4,2],[0,3],[4,3],[1,4],[2,4],[3,4],[4,4]] },
-                { name: 'MWSS', desc: 'Middleweight', cells: [[1,0],[2,0],[3,0],[4,0],[5,0],[0,1],[5,1],[5,2],[0,3],[4,3],[2,4]] },
-                { name: 'HWSS', desc: 'Heavyweight', cells: [[1,0],[2,0],[3,0],[4,0],[5,0],[6,0],[0,1],[6,1],[6,2],[0,3],[5,3],[2,4]] }
+                { name: 'Glider', desc: 'Period 4', cells: [[1,0],[2,1],[0,2],[1,2],[2,2]], rule: 'B3/S23' },
+                { name: 'LWSS', desc: 'Lightweight', cells: [[0,1],[3,1],[4,2],[0,3],[4,3],[1,4],[2,4],[3,4],[4,4]], rule: 'B3/S23' },
+                { name: 'MWSS', desc: 'Middleweight', cells: [[1,0],[2,0],[3,0],[4,0],[5,0],[0,1],[5,1],[5,2],[0,3],[4,3],[2,4]], rule: 'B3/S23' },
+                { name: 'HWSS', desc: 'Heavyweight', cells: [[1,0],[2,0],[3,0],[4,0],[5,0],[6,0],[0,1],[6,1],[6,2],[0,3],[5,3],[2,4]], rule: 'B3/S23' },
+                { name: 'Replicator', desc: 'HighLife only', cells: [[0,0],[1,0],[2,0],[3,0],[4,0],[0,1],[4,1],[0,2],[2,2],[4,2],[0,3],[4,3],[0,4],[1,4],[2,4],[3,4],[4,4]], rule: 'B36/S23' }
             ],
             osc: [
-                { name: 'Blinker', desc: 'Period 2', cells: [[0,1],[1,1],[2,1]] },
-                { name: 'Toad', desc: 'Period 2', cells: [[1,1],[2,1],[3,1],[0,2],[1,2],[2,2]] },
-                { name: 'Beacon', desc: 'Period 2', cells: [[0,0],[1,0],[0,1],[3,2],[2,3],[3,3]] },
-                { name: 'Pulsar', desc: 'Period 3', cells: [[2,0],[3,0],[4,0],[8,0],[9,0],[10,0],[0,2],[5,2],[7,2],[12,2],[0,3],[5,3],[7,3],[12,3],[0,4],[5,4],[7,4],[12,4],[2,5],[3,5],[4,5],[8,5],[9,5],[10,5],[2,7],[3,7],[4,7],[8,7],[9,7],[10,7],[0,8],[5,8],[7,8],[12,8],[0,9],[5,9],[7,9],[12,9],[0,10],[5,10],[7,10],[12,10],[2,12],[3,12],[4,12],[8,12],[9,12],[10,12]] },
-                { name: 'Pentadecathlon', desc: 'Period 15', cells: [[1,0],[2,0],[0,1],[1,1],[2,1],[3,1],[1,2],[2,2],[1,5],[2,5],[0,6],[1,6],[2,6],[3,6],[1,7],[2,7]] }
+                { name: 'Blinker', desc: 'Period 2', cells: [[0,1],[1,1],[2,1]], rule: 'B3/S23' },
+                { name: 'Toad', desc: 'Period 2', cells: [[1,1],[2,1],[3,1],[0,2],[1,2],[2,2]], rule: 'B3/S23' },
+                { name: 'Beacon', desc: 'Period 2', cells: [[0,0],[1,0],[0,1],[3,2],[2,3],[3,3]], rule: 'B3/S23' },
+                { name: 'Pulsar', desc: 'Period 3', cells: [[2,0],[3,0],[4,0],[8,0],[9,0],[10,0],[0,2],[5,2],[7,2],[12,2],[0,3],[5,3],[7,3],[12,3],[0,4],[5,4],[7,4],[12,4],[2,5],[3,5],[4,5],[8,5],[9,5],[10,5],[2,7],[3,7],[4,7],[8,7],[9,7],[10,7],[0,8],[5,8],[7,8],[12,8],[0,9],[5,9],[7,9],[12,9],[0,10],[5,10],[7,10],[12,10],[2,12],[3,12],[4,12],[8,12],[9,12],[10,12]], rule: 'B3/S23' },
+                { name: 'Pentadecathlon', desc: 'Period 15', cells: [[1,0],[2,0],[0,1],[1,1],[2,1],[3,1],[1,2],[2,2],[1,5],[2,5],[0,6],[1,6],[2,6],[3,6],[1,7],[2,7]], rule: 'B3/S23' }
             ],
             still: [
-                { name: 'Block', desc: '4 cells', cells: [[0,0],[1,0],[0,1],[1,1]] },
-                { name: 'Beehive', desc: '6 cells', cells: [[1,0],[2,0],[0,1],[3,1],[1,2],[2,2]] },
-                { name: 'Loaf', desc: '7 cells', cells: [[1,0],[2,0],[0,1],[3,1],[1,2],[3,2],[2,3]] },
-                { name: 'Boat', desc: '5 cells', cells: [[0,0],[1,0],[0,1],[2,1],[1,2]] }
+                { name: 'Block', desc: '4 cells', cells: [[0,0],[1,0],[0,1],[1,1]], rule: 'B3/S23' },
+                { name: 'Beehive', desc: '6 cells', cells: [[1,0],[2,0],[0,1],[3,1],[1,2],[2,2]], rule: 'B3/S23' },
+                { name: 'Loaf', desc: '7 cells', cells: [[1,0],[2,0],[0,1],[3,1],[1,2],[3,2],[2,3]], rule: 'B3/S23' },
+                { name: 'Boat', desc: '5 cells', cells: [[0,0],[1,0],[0,1],[2,1],[1,2]], rule: 'B3/S23' }
             ],
             meth: [
-                { name: 'R-pentomino', desc: '1103 gens', cells: [[1,0],[2,0],[0,1],[1,1],[1,2]] },
-                { name: 'Diehard', desc: '130 gens', cells: [[6,0],[0,1],[1,1],[1,2],[5,2],[6,2],[7,2]] },
-                { name: 'Acorn', desc: '5206 gens', cells: [[1,0],[3,1],[0,2],[1,2],[1,3],[4,2],[5,2],[6,2]] }
+                { name: 'R-pentomino', desc: '1103 gens', cells: [[1,0],[2,0],[0,1],[1,1],[1,2]], rule: 'B3/S23' },
+                { name: 'Diehard', desc: '130 gens', cells: [[6,0],[0,1],[1,1],[1,2],[5,2],[6,2],[7,2]], rule: 'B3/S23' },
+                { name: 'Acorn', desc: '5206 gens', cells: [[1,0],[3,1],[0,2],[1,2],[1,3],[4,2],[5,2],[6,2]], rule: 'B3/S23' }
             ]
         };
 
@@ -239,6 +240,9 @@
                 const selected = e.target.value;
                 rule = RULES[selected] || parseRule(selected);
                 console.log('Rule changed:', rule);
+                // Refresh patterns to show rule-specific ones
+                const activeTab = document.querySelector('.tab.active');
+                if (activeTab) renderPatterns(activeTab.dataset.cat);
             };
             
             // Tools
@@ -263,6 +267,24 @@
             canvas.onmouseup = onMouseUp;
             canvas.onmouseleave = onMouseUp;
             canvas.onwheel = onWheel;
+            
+            // Keyboard shortcuts for pan
+            document.addEventListener('keydown', (e) => {
+                if (e.code === 'Space' && !e.repeat) {
+                    e.preventDefault();
+                    spacePressed = true;
+                    canvas.style.cursor = 'grab';
+                }
+            });
+            
+            document.addEventListener('keyup', (e) => {
+                if (e.code === 'Space') {
+                    e.preventDefault();
+                    spacePressed = false;
+                    if (currentTool === 'pan') canvas.style.cursor = 'grab';
+                    else canvas.style.cursor = 'crosshair';
+                }
+            });
             
             // Touch support
             canvas.ontouchstart = onTouchStart;
@@ -293,12 +315,18 @@
         function renderPatterns(category) {
             const list = document.getElementById('pattern-list');
             list.innerHTML = '';
+            const currentRuleKey = Object.keys(RULES).find(k => RULES[k] === rule) || 'B3/S23';
+            
             (PATTERNS[category] || []).forEach(p => {
-                const btn = document.createElement('button');
-                btn.className = 'pattern-btn';
-                btn.innerHTML = `<span class="name">${p.name}</span><span class="desc">${p.desc}</span>`;
-                btn.onclick = () => loadPattern(p);
-                list.appendChild(btn);
+                // Show pattern if it matches current rule or has no rule specified
+                if (!p.rule || p.rule === currentRuleKey) {
+                    const btn = document.createElement('button');
+                    btn.className = 'pattern-btn';
+                    const ruleLabel = p.rule && p.rule !== 'B3/S23' ? ` [${p.rule}]` : '';
+                    btn.innerHTML = `<span class="name">${p.name}${ruleLabel}</span><span class="desc">${p.desc}</span>`;
+                    btn.onclick = () => loadPattern(p);
+                    list.appendChild(btn);
+                }
             });
         }
 
@@ -468,10 +496,23 @@
         // Mouse handling
         let lastX, lastY, isDrawing;
 
+        let isPanning = false;
+        let panStartX, panStartY;
+        let spacePressed = false;
+
         function onMouseDown(e) {
             const rect = canvas.getBoundingClientRect();
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
+            
+            // Pan with middle mouse or space+left click
+            if (e.button === 1 || (spacePressed && e.button === 0)) {
+                isPanning = true;
+                panStartX = x - offsetX;
+                panStartY = y - offsetY;
+                canvas.style.cursor = 'grabbing';
+                return;
+            }
             
             if (currentTool === 'pan') {
                 isDragging = true;
@@ -499,7 +540,11 @@
             const cellY = Math.floor((y - offsetY) / (cellSize * zoom));
             document.getElementById('pos').textContent = `${cellX}, ${cellY}`;
             
-            if (isDragging) {
+            if (isPanning) {
+                offsetX = x - panStartX;
+                offsetY = y - panStartY;
+                render();
+            } else if (isDragging) {
                 offsetX = x - dragStartX;
                 offsetY = y - dragStartY;
                 render();
@@ -515,7 +560,9 @@
         function onMouseUp() {
             isDragging = false;
             isDrawing = false;
+            isPanning = false;
             if (currentTool === 'pan') canvas.style.cursor = 'grab';
+            else canvas.style.cursor = 'crosshair';
         }
 
         function onWheel(e) {
