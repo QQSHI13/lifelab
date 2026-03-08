@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LifeLab - Cellular Automaton Explorer</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔬</text></svg>">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root {
+            --bg: #0d1117; --surface: #161b22; --surface-hover: #21262d; --border: #30363d;
+            --text: #c9d1d9; --text-secondary: #8b949e; --accent: #58a6ff; --accent-hover: #79c0ff;
+            --success: #238636; --cell-alive: #58a6ff; --grid-line: #21262d;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg); color: var(--text); height: 100vh; overflow: hidden;
+            display: flex; flex-direction: column;
+        }
+        
+        .header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 10px 20px; background: var(--surface); border-bottom: 1px solid var(--border); gap: 20px;
+        }
+        
+        .logo { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 700; color: var(--accent); }
+        .logo-icon { width: 32px; height: 32px; background: linear-gradient(135deg, var(--accent), var(--success)); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+        
+        .controls { display: flex; align-items: center; gap: 8px; }
+        .btn { padding: 6px 14px; background: var(--surface-hover); border: 1px solid var(--border); color: var(--text); border-radius: 6px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 6px; transition: all 0.15s; }
+        .btn:hover { background: var(--border); }
+        .btn.primary { background: var(--success); border-color: var(--success); color: white; }
+        .btn-icon { width: 32px; height: 32px; padding: 0; justify-content: center; }
+        
+        .speed-control { display: flex; align-items: center; gap: 8px; padding: 0 12px; border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
+        .speed-control input { width: 100px; accent-color: var(--accent); }
+        .speed-label { font-size: 12px; color: var(--text-secondary); }
+        .gen-counter { font-family: 'JetBrains Mono', monospace; font-size: 16px; color: var(--accent); font-weight: 700; }
+        
+        .main { display: flex; flex: 1; overflow: hidden; }
+        
+                .sidebar {
+            width: 260px; background: var(--surface); border-right: 1px solid var(--border);
+            display: flex; flex-direction: column;
+        }
+        
+        .sidebar-top { flex-shrink: 0; border-bottom: 1px solid var(--border); }
+        .sidebar-middle { flex: 1; min-height: 0; display: flex; flex-direction: column; border-bottom: 1px solid var(--border); }
+        .sidebar-bottom { flex-shrink: 0; }
+        
+        .sidebar-header { padding: 10px 14px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); background: rgba(0,0,0,0.2); }
+        .sidebar-content { padding: 10px; }
+        
+        .pattern-tabs { display: flex; gap: 4px; padding: 8px; border-bottom: 1px solid var(--border); overflow-x: auto; }
+        .pattern-list-scroll { flex: 1; overflow-y: auto; padding: 10px; min-height: 0; }
+        
+        .canvas-container { flex: 1; position: relative; background: var(--bg); overflow: hidden; cursor: crosshair; }
+        #gridCanvas { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+        
+        .info-overlay { position: absolute; top: 12px; left: 12px; padding: 8px 12px; background: rgba(13,17,23,0.9); border: 1px solid var(--border); border-radius: 6px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-secondary); }
+        .info-overlay span { color: var(--accent); }
+        
+        .toolbar { position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; padding: 6px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+        .tool-btn { width: 36px; height: 36px; background: var(--surface-hover); border: 1px solid var(--border); color: var(--text); border-radius: 6px; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; }
+        .tool-btn:hover { background: var(--border); }
+        .tool-btn.active { background: var(--accent); border-color: var(--accent); color: white; }
+        .zoom-display { display: flex; align-items: center; padding: 0 10px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-secondary); }
+        
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+        
+        select, .pattern-btn {
+            width: 100%; padding: 8px 12px; background: var(--bg); border: 1px solid var(--border);
+            color: var(--text); border-radius: 6px; font-size: 13px; cursor: pointer; margin-bottom: 8px;
+        }
+        .pattern-btn { text-align: left; margin-bottom: 6px; font-size: 12px; }
+        .pattern-btn:hover { border-color: var(--accent); }
+        .pattern-btn .name { font-weight: 600; display: block; }
+        .pattern-btn .desc { font-size: 10px; color: var(--text-secondary); }
+        
+        .tab { padding: 5px 10px; background: transparent; border: 1px solid transparent; color: var(--text-secondary); border-radius: 4px; cursor: pointer; font-size: 11px; white-space: nowrap; }
+        .tab:hover { background: var(--surface-hover); color: var(--text); }
+        .tab.active { background: var(--accent); color: white; }
+        
+        .stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; padding: 10px; }
+        .stat-box { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px; text-align: center; }
+        .stat-value { font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 700; color: var(--accent); }
+        .stat-label { font-size: 10px; color: var(--text-secondary); text-transform: uppercase; margin-top: 4px; }
+        
+        /* Settings Modal */
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: none; align-items: center; justify-content: center; z-index: 1000; }
+        .modal-overlay.active { display: flex; }
+        .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; width: 90%; max-width: 500px; max-height: 80vh; overflow: hidden; display: flex; flex-direction: column; }
+        .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--border); }
+        .modal-title { font-size: 18px; font-weight: 600; }
+        .modal-close { background: none; border: none; color: var(--text-secondary); font-size: 20px; cursor: pointer; padding: 4px; }
+        .modal-close:hover { color: var(--text); }
+        .modal-content { padding: 20px; overflow-y: auto; }
+        .modal-section { margin-bottom: 24px; }
+        .modal-section:last-child { margin-bottom: 0; }
+        .modal-section-title { font-size: 14px; font-weight: 600; color: var(--accent); margin-bottom: 12px; text-transform: uppercase; }
+        .hint-item { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+        .hint-item:last-child { border-bottom: none; }
+        .hint-key { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 4px 8px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--accent); min-width: 60px; text-align: center; }
+        .hint-text { font-size: 13px; color: var(--text-secondary); }
+        .rule-info { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-top: 8px; }
+        .rule-name { font-weight: 600; color: var(--accent); margin-bottom: 4px; }
+        .rule-desc { font-size: 12px; color: var(--text-secondary); line-height: 1.5; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo"><div class="logo-icon">🔬</div><span>LifeLab</span></div>
+        <div class="controls">
+            <button class="btn btn-icon" id="btn-settings" title="Settings">⚙️</button>
+            <button class="btn btn-icon" id="btn-clear" title="Clear">🗑</button>
+            <button class="btn btn-icon" id="btn-step-back" title="Step Back">⏮</button>
+            <button class="btn primary" id="btn-play"><span id="play-icon">▶</span></button>
+            <button class="btn btn-icon" id="btn-step" title="Step">⏭</button>
+            <button class="btn btn-icon" id="btn-random" title="Random">🎲</button>
+            <div class="speed-control">
+                <span class="speed-label">Speed</span>
+                <input type="range" id="speed" min="1" max="60" value="20">
+                <span id="speed-val">20</span>
+            </div>
+        </div>
+        <div class="gen-counter">Gen: <span id="gen">0</span></div>
+    </div>
+
+    <div class="main">
+        <div class="sidebar">
+            <div class="sidebar-top">
+                <div class="sidebar-header">Rule Set</div>
+                <div class="sidebar-content">
+                    <select id="rule-select">
+                        <option value="B3/S23">Conway's Life (B3/S23)</option>
+                        <option value="B36/S23">HighLife (B36/S23)</option>
+                        <option value="B2/S">Seeds (B2/S)</option>
+                        <option value="B3678/S34678">Day & Night (B3678/S34678)</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="sidebar-middle">
+                <div class="sidebar-header">Pattern Library</div>
+                <div class="pattern-tabs">
+                    <button class="tab active" data-cat="guns">Guns</button>
+                    <button class="tab" data-cat="ships">Ships</button>
+                    <button class="tab" data-cat="osc">Osc</button>
+                    <button class="tab" data-cat="still">Still</button>
+                    <button class="tab" data-cat="meth">Meth</button>
+                </div>
+                <div class="pattern-list-scroll" id="pattern-list"></div>
+            </div>
+            
+            <div class="sidebar-bottom">
+                <div class="sidebar-header">Statistics</div>
+                <div class="stats">
+                    <div class="stat-box"><div class="stat-value" id="pop">0</div><div class="stat-label">Population</div></div>
+                    <div class="stat-box"><div class="stat-value" id="births">0</div><div class="stat-label">Births</div></div>
+                    <div class="stat-box"><div class="stat-value" id="deaths">0</div><div class="stat-label">Deaths</div></div>
+                    <div class="stat-box"><div class="stat-value" id="density">0%</div><div class="stat-label">Density</div></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="canvas-container" id="container">
+            <canvas id="gridCanvas"></canvas>
+            <div class="info-overlay">Pos: <span id="pos">0, 0</span> | Zoom: <span id="zoom">100%</span></div>
+            <div class="toolbar">
+                <button class="tool-btn active" id="tool-draw" title="Draw">✏️</button>
+                <button class="tool-btn" id="tool-erase" title="Erase">🧼</button>
+                <button class="tool-btn" id="tool-pan" title="Pan">✋</button>
+                <div style="width: 1px; background: var(--border); margin: 4px;"></div>
+                <button class="tool-btn" id="zoom-out">−</button>
+                <div class="zoom-display" id="zoom-level">100%</div>
+                <button class="tool-btn" id="zoom-in">+</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title">Settings & Help</div>
+                <button class="modal-close" id="btn-close-settings">×</button>
+            </div>
+            <div class="modal-content">
+                <div class="modal-section">
+                    <div class="modal-section-title">Keyboard Shortcuts</div>
+                    <div class="hint-item">
+                        <div class="hint-key">Space</div>
+                        <div class="hint-text">Hold to pan the canvas (or use middle mouse button)</div>
+                    </div>
+                    <div class="hint-item">
+                        <div class="hint-key">Click</div>
+                        <div class="hint-text">Draw or erase cells depending on selected tool</div>
+                    </div>
+                    <div class="hint-item">
+                        <div class="hint-key">Scroll</div>
+                        <div class="hint-text">Zoom in/out on the canvas</div>
+                    </div>
+                    <div class="hint-item">
+                        <div class="hint-key">Play</div>
+                        <div class="hint-text">Start/pause the simulation</div>
+                    </div>
+                    <div class="hint-item">
+                        <div class="hint-key">Step</div>
+                        <div class="hint-text">Advance one generation manually</div>
+                    </div>
+                </div>
+
+                <div class="modal-section">
+                    <div class="modal-section-title">Rule Sets</div>
+                    
+                    <div class="rule-info">
+                        <div class="rule-name">Conway's Life (B3/S23)</div>
+                        <div class="rule-desc">The classic cellular automaton. Cells are born with 3 neighbors and survive with 2 or 3. Most patterns work with this rule.</div>
+                    </div>
+                    
+                    <div class="rule-info">
+                        <div class="rule-name">HighLife (B36/S23)</div>
+                        <div class="rule-desc">Like Conway's but cells also born with 6 neighbors. Famous for the Replicator pattern that copies itself!</div>
+                    </div>
+                    
+                    <div class="rule-info">
+                        <div class="rule-name">Seeds (B2/S)</div>
+                        <div class="rule-desc">Explosive rule where cells are born with 2 neighbors but never survive. Creates expanding patterns.</div>
+                    </div>
+                    
+                    <div class="rule-info">
+                        <div class="rule-name">Day & Night (B3678/S34678)</div>
+                        <div class="rule-desc">Symmetric rule where dead and alive cells behave similarly. Supports complex spaceships.</div>
+                    </div>
+                </div>
+
+                <div class="modal-section">
+                    <div class="modal-section-title">Pattern Tips</div>
+                    <div class="hint-item">
+                        <div class="hint-key">Guns</div>
+                        <div class="hint-text">Patterns that shoot moving spaceships (gliders) periodically</div>
+                    </div>
+                    <div class="hint-item">
+                        <div class="hint-key">Ships</div>
+                        <div class="hint-text">Moving patterns that travel across the grid. Gliders move diagonally.</div>
+                    </div>
+                    <div class="hint-item">
+                        <div class="hint-key">Osc</div>
+                        <div class="hint-text">Oscillators that cycle through states periodically without moving</div>
+                    </div>
+                    <div class="hint-item">
+                        <div class="hint-key">Meth</div>
+                        <div class="hint-text">Methuselahs - small patterns that evolve for many generations before stabilizing</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Pattern Library - Loaded from JSON files with fallback
+        let PATTERNS = {};
+
+        // Fallback patterns (embedded for reliability)
+        const FALLBACK_PATTERNS = {
+            guns: [
+                { name: 'Gosper Gun', desc: 'First glider gun', cells: [[24,0],[22,1],[24,1],[12,2],[13,2],[20,2],[21,2],[34,2],[35,2],[11,3],[15,3],[20,3],[21,3],[34,3],[35,3],[0,4],[1,4],[10,4],[16,4],[20,4],[21,4],[0,5],[1,5],[10,5],[14,5],[16,5],[17,5],[22,5],[24,5],[10,6],[16,6],[24,6],[11,7],[15,7],[12,8],[13,8]], rule: 'B3/S23' },
+                { name: 'Simkin Gun', desc: 'Period 120 glider gun', cells: [[0,0],[1,0],[0,1],[1,1],[7,0],[8,0],[7,1],[8,1],[4,4],[5,4],[4,5],[5,5],[15,2],[16,2],[17,2],[14,3],[18,3],[14,4],[18,4],[15,5],[16,5],[22,2],[23,2],[22,3],[23,3],[20,6],[21,6],[22,6],[20,7],[21,7],[22,7],[16,9],[17,9],[16,10],[17,10]], rule: 'B3/S23' }
+            ],
+            ships: [
+                { name: 'Glider', desc: 'Period 4 diagonal', cells: [[1,0],[2,1],[0,2],[1,2],[2,2]], rule: 'B3/S23' },
+                { name: 'LWSS', desc: 'Lightweight spaceship', cells: [[1,0],[4,0],[0,1],[0,2],[4,2],[0,3],[1,3],[2,3],[3,3]], rule: 'B3/S23' },
+                { name: 'MWSS', desc: 'Middleweight spaceship', cells: [[2,0],[0,1],[4,1],[5,2],[0,3],[5,3],[1,4],[2,4],[3,4],[4,4],[5,4]], rule: 'B3/S23' },
+                { name: 'HWSS', desc: 'Heavyweight spaceship (13 cells)', cells: [[1,0],[4,0],[0,1],[5,1],[6,1],[0,2],[5,2],[6,2],[0,3],[5,3],[6,3],[1,4],[2,4],[3,4],[4,4],[5,4]], rule: 'B3/S23' },
+                { name: 'Replicator', desc: 'HighLife 5x5 hollow', cells: [[0,0],[1,0],[2,0],[3,0],[4,0],[0,1],[4,1],[0,2],[4,2],[0,3],[4,3],[0,4],[1,4],[2,4],[3,4],[4,4]], rule: 'B36/S23' }
+            ],
+            osc: [
+                { name: 'Blinker', desc: 'Period 2', cells: [[0,1],[1,1],[2,1]], rule: 'B3/S23' },
+                { name: 'Toad', desc: 'Period 2', cells: [[1,1],[2,1],[3,1],[0,2],[1,2],[2,2]], rule: 'B3/S23' },
+                { name: 'Beacon', desc: 'Period 2', cells: [[0,0],[1,0],[0,1],[3,2],[2,3],[3,3]], rule: 'B3/S23' },
+                { name: 'Pulsar', desc: 'Period 3', cells: [[2,0],[3,0],[4,0],[8,0],[9,0],[10,0],[0,2],[5,2],[7,2],[12,2],[0,3],[5,3],[7,3],[12,3],[0,4],[5,4],[7,4],[12,4],[2,5],[3,5],[4,5],[8,5],[9,5],[10,5],[2,7],[3,7],[4,7],[8,7],[9,7],[10,7],[0,8],[5,8],[7,8],[12,8],[0,9],[5,9],[7,9],[12,9],[0,10],[5,10],[7,10],[12,10],[2,12],[3,12],[4,12],[8,12],[9,12],[10,12]], rule: 'B3/S23' },
+                { name: 'Pentadecathlon', desc: 'Period 15', cells: [[1,0],[2,0],[0,1],[3,1],[0,2],[3,2],[0,3],[3,3],[0,4],[3,4],[1,5],[2,5]], rule: 'B3/S23' }
+            ],
+            still: [
+                { name: 'Block', desc: '4 cells', cells: [[0,0],[1,0],[0,1],[1,1]], rule: 'B3/S23' },
+                { name: 'Beehive', desc: '6 cells', cells: [[1,0],[2,0],[0,1],[3,1],[1,2],[2,2]], rule: 'B3/S23' }
+            ],
+            meth: [
+                { name: 'R-pentomino', desc: '1103 gens', cells: [[1,0],[2,0],[0,1],[1,1],[1,2]], rule: 'B3/S23' },
+                { name: 'Diehard', desc: '130 gens', cells: [[6,0],[0,1],[1,1],[1,2],[5,2],[6,2],[7,2]], rule: 'B3/S23' },
+                { name: 'Acorn', desc: '5206 gens', cells: [[1,0],[3,1],[0,2],[1,2],[2,2],[4,2],[5,2],[2,3]], rule: 'B3/S23' },
+                { name: 'Pi Heptomino', desc: '175 gens, explosive', cells: [[0,0],[1,0],[2,0],[0,1],[1,1],[0,2],[1,2]], rule: 'B3/S23' }
+            ]
+        };
+
+        // Load patterns from JSON files
+        async function loadPatterns() {
+            const categories = ['guns', 'ships', 'osc', 'still', 'meth'];
+            try {
+                const results = await Promise.all(
+                    categories.map(cat => fetch(`patterns/${cat}.json`).then(r => r.json()))
+                );
+                results.forEach(data => {
+                    PATTERNS[data.category] = data.patterns;
+                });
+            } catch (err) {
+                console.error('Failed to load patterns, using fallback:', err);
+                PATTERNS = FALLBACK_PATTERNS;
+            }
+            // Render initial category after patterns loaded
+            const activeTab = document.querySelector('.tab.active');
+            if (activeTab) renderPatterns(activeTab.dataset.cat);
+        }
+
+        // Rules
+        const RULES = {
+            'B3/S23': { born: [3], survive: [2,3], name: "Conway's Life" },
+            'B36/S23': { born: [3,6], survive: [2,3], name: 'HighLife' },
+            'B2/S': { born: [2], survive: [], name: 'Seeds' },
+            'B3678/S34678': { born: [3,6,7,8], survive: [3,4,6,7,8], name: 'Day & Night' }
+        };
+
+        // Parse rule string like "B3/S23" or "B2/S"
+        function parseRule(ruleStr) {
+            const match = ruleStr.match(/B(\d*)\/?S?(\d*)/);
+            if (!match) return RULES['B3/S23'];
+            const born = match[1] ? match[1].split('').map(Number) : [];
+            const survive = match[2] ? match[2].split('').map(Number) : [];
+            return { born, survive, name: 'Custom' };
+        }
+
+        // State
+        let canvas, ctx, width, height, cellSize = 10, zoom = 1;
+        let offsetX = 0, offsetY = 0, isDragging = false, dragStartX, dragStartY;
+        let isPlaying = false, generation = 0, speed = 20, lastFrame = 0;
+        let grid = new Map(), history = [], currentTool = 'draw';
+        let rule = RULES['B3/S23'];
+        let population = 0, births = 0, deaths = 0;
+
+        // Init
+        function init() {
+            canvas = document.getElementById('gridCanvas');
+            ctx = canvas.getContext('2d');
+            resize();
+            window.addEventListener('resize', resize);
+            
+            // Controls
+            document.getElementById('btn-play').onclick = togglePlay;
+            document.getElementById('btn-step').onclick = step;
+            document.getElementById('btn-step-back').onclick = stepBack;
+            document.getElementById('btn-clear').onclick = () => { clear(); generation = 0; updateStats(); };
+            document.getElementById('btn-random').onclick = randomFill;
+            document.getElementById('speed').oninput = (e) => { speed = parseInt(e.target.value); document.getElementById('speed-val').textContent = speed; };
+            document.getElementById('rule-select').onchange = (e) => { 
+                const selected = e.target.value;
+                rule = RULES[selected] || parseRule(selected);
+                console.log('Rule changed:', rule);
+                // Refresh patterns to show rule-specific ones
+                const activeTab = document.querySelector('.tab.active');
+                if (activeTab) renderPatterns(activeTab.dataset.cat);
+            };
+            
+            // Tools
+            document.getElementById('tool-draw').onclick = () => setTool('draw');
+            document.getElementById('tool-erase').onclick = () => setTool('erase');
+            document.getElementById('tool-pan').onclick = () => setTool('pan');
+            document.getElementById('zoom-in').onclick = () => { zoom *= 1.2; render(); };
+            document.getElementById('zoom-out').onclick = () => { zoom /= 1.2; render(); };
+            
+            // Settings modal
+            const settingsModal = document.getElementById('settingsModal');
+            document.getElementById('btn-settings').onclick = () => settingsModal.classList.add('active');
+            document.getElementById('btn-close-settings').onclick = () => settingsModal.classList.remove('active');
+            settingsModal.onclick = (e) => { if (e.target === settingsModal) settingsModal.classList.remove('active'); };
+            
+            // Pattern tabs
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.onclick = () => {
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    renderPatterns(tab.dataset.cat);
+                };
+            });
+            
+            // Canvas interaction
+            canvas.onmousedown = onMouseDown;
+            canvas.onmousemove = onMouseMove;
+            canvas.onmouseup = onMouseUp;
+            canvas.onmouseleave = onMouseUp;
+            canvas.onwheel = onWheel;
+            
+            // Keyboard shortcuts for pan
+            document.addEventListener('keydown', (e) => {
+                if (e.code === 'Space' && !e.repeat) {
+                    e.preventDefault();
+                    spacePressed = true;
+                    canvas.style.cursor = 'grab';
+                }
+            });
+            
+            document.addEventListener('keyup', (e) => {
+                if (e.code === 'Space') {
+                    e.preventDefault();
+                    spacePressed = false;
+                    if (currentTool === 'pan') canvas.style.cursor = 'grab';
+                    else canvas.style.cursor = 'crosshair';
+                }
+            });
+            
+            // Touch support
+            canvas.ontouchstart = onTouchStart;
+            canvas.ontouchmove = onTouchMove;
+            canvas.ontouchend = onTouchEnd;
+            
+            loadPatterns();
+            render();
+            requestAnimationFrame(loop);
+        }
+
+        function resize() {
+            const container = document.getElementById('container');
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            width = Math.ceil(canvas.width / cellSize);
+            height = Math.ceil(canvas.height / cellSize);
+            render();
+        }
+
+        function setTool(tool) {
+            currentTool = tool;
+            document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('tool-' + tool).classList.add('active');
+            canvas.style.cursor = tool === 'pan' ? 'grab' : 'crosshair';
+        }
+
+        function renderPatterns(category) {
+            const list = document.getElementById('pattern-list');
+            list.innerHTML = '';
+            const currentRuleKey = Object.keys(RULES).find(k => RULES[k] === rule) || 'B3/S23';
+            
+            (PATTERNS[category] || []).forEach(p => {
+                // Show pattern if it matches current rule or has no rule specified
+                if (!p.rule || p.rule === currentRuleKey) {
+                    const btn = document.createElement('button');
+                    btn.className = 'pattern-btn';
+                    const ruleLabel = p.rule && p.rule !== 'B3/S23' ? ` [${p.rule}]` : '';
+                    btn.innerHTML = `<span class="name">${p.name}${ruleLabel}</span><span class="desc">${p.desc}</span>`;
+                    btn.onclick = () => loadPattern(p);
+                    list.appendChild(btn);
+                }
+            });
+        }
+
+        function loadPattern(pattern) {
+            saveHistory();
+            const cx = Math.floor(width / 2), cy = Math.floor(height / 2);
+            pattern.cells.forEach(([x, y]) => {
+                grid.set(`${cx + x},${cy + y}`, 1);
+            });
+            updateStats();
+            render();
+        }
+
+        function getCell(x, y) {
+            return grid.has(`${x},${y}`) ? 1 : 0;
+        }
+
+        function setCell(x, y, alive) {
+            const key = `${x},${y}`;
+            if (alive) grid.set(key, 1);
+            else grid.delete(key);
+        }
+
+        function countNeighbors(x, y) {
+            let count = 0;
+            for (let dy = -1; dy <= 1; dy++) {
+                for (let dx = -1; dx <= 1; dx++) {
+                    if (dx === 0 && dy === 0) continue;
+                    count += getCell(x + dx, y + dy);
+                }
+            }
+            return count;
+        }
+
+        function step() {
+            saveHistory();
+            const newGrid = new Map();
+            const checked = new Set();
+            births = 0; deaths = 0;
+            
+            // Check all cells that could change
+            grid.forEach((_, key) => {
+                const [x, y] = key.split(',').map(Number);
+                for (let dy = -1; dy <= 1; dy++) {
+                    for (let dx = -1; dx <= 1; dx++) {
+                        const cx = x + dx, cy = y + dy;
+                        const ckey = `${cx},${cy}`;
+                        if (checked.has(ckey)) continue;
+                        checked.add(ckey);
+                        
+                        const neighbors = countNeighbors(cx, cy);
+                        const alive = getCell(cx, cy);
+                        
+                        if (alive) {
+                            if (rule.survive.includes(neighbors)) newGrid.set(ckey, 1);
+                            else deaths++;
+                        } else {
+                            if (rule.born.includes(neighbors)) {
+                                newGrid.set(ckey, 1);
+                                births++;
+                            }
+                        }
+                    }
+                }
+            });
+            
+            grid = newGrid;
+            generation++;
+            updateStats();
+            render();
+        }
+
+        function saveHistory() {
+            if (history.length > 50) history.shift();
+            history.push(new Map(grid));
+        }
+
+        function stepBack() {
+            if (history.length === 0) return;
+            grid = history.pop();
+            generation = Math.max(0, generation - 1);
+            updateStats();
+            render();
+        }
+
+        function clear() {
+            saveHistory();
+            grid.clear();
+            generation = 0;
+            updateStats();
+            render();
+        }
+
+        function randomFill() {
+            saveHistory();
+            grid.clear();
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    if (Math.random() < 0.15) grid.set(`${x},${y}`, 1);
+                }
+            }
+            updateStats();
+            render();
+        }
+
+        function togglePlay() {
+            isPlaying = !isPlaying;
+            document.getElementById('play-icon').textContent = isPlaying ? '⏸' : '▶';
+        }
+
+        function updateStats() {
+            population = grid.size;
+            document.getElementById('pop').textContent = population;
+            document.getElementById('births').textContent = births;
+            document.getElementById('deaths').textContent = deaths;
+            document.getElementById('gen').textContent = generation;
+            document.getElementById('density').textContent = Math.round(population / (width * height) * 100) + '%';
+        }
+
+        function render() {
+            ctx.fillStyle = '#0d1117';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            const cellW = cellSize * zoom;
+            const cellH = cellSize * zoom;
+            const startX = Math.floor(-offsetX / cellW);
+            const startY = Math.floor(-offsetY / cellH);
+            const endX = startX + Math.ceil(canvas.width / cellW) + 1;
+            const endY = startY + Math.ceil(canvas.height / cellH) + 1;
+            
+            // Grid lines
+            ctx.strokeStyle = '#21262d';
+            ctx.lineWidth = 0.5;
+            ctx.beginPath();
+            for (let x = startX; x <= endX; x++) {
+                const px = x * cellW + offsetX;
+                ctx.moveTo(px, 0); ctx.lineTo(px, canvas.height);
+            }
+            for (let y = startY; y <= endY; y++) {
+                const py = y * cellH + offsetY;
+                ctx.moveTo(0, py); ctx.lineTo(canvas.width, py);
+            }
+            ctx.stroke();
+            
+            // Cells
+            ctx.fillStyle = '#58a6ff';
+            grid.forEach((_, key) => {
+                const [x, y] = key.split(',').map(Number);
+                if (x < startX || x > endX || y < startY || y > endY) return;
+                const px = x * cellW + offsetX;
+                const py = y * cellH + offsetY;
+                ctx.fillRect(px + 1, py + 1, cellW - 1, cellH - 1);
+            });
+            
+            document.getElementById('zoom-level').textContent = Math.round(zoom * 100) + '%';
+            document.getElementById('zoom').textContent = Math.round(zoom * 100) + '%';
+        }
+
+        function loop(timestamp) {
+            if (isPlaying && timestamp - lastFrame > 1000 / speed) {
+                step();
+                lastFrame = timestamp;
+            }
+            requestAnimationFrame(loop);
+        }
+
+        // Mouse handling
+        let lastX, lastY, isDrawing;
+
+        let isPanning = false;
+        let panStartX, panStartY;
+        let spacePressed = false;
+
+        function onMouseDown(e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            // Pan with middle mouse or space+left click
+            if (e.button === 1 || (spacePressed && e.button === 0)) {
+                isPanning = true;
+                panStartX = x - offsetX;
+                panStartY = y - offsetY;
+                canvas.style.cursor = 'grabbing';
+                return;
+            }
+            
+            if (currentTool === 'pan') {
+                isDragging = true;
+                dragStartX = x - offsetX;
+                dragStartY = y - offsetY;
+                canvas.style.cursor = 'grabbing';
+            } else {
+                isDrawing = true;
+                const cellX = Math.floor((x - offsetX) / (cellSize * zoom));
+                const cellY = Math.floor((y - offsetY) / (cellSize * zoom));
+                lastX = cellX; lastY = cellY;
+                
+                if (currentTool === 'draw') setCell(cellX, cellY, 1);
+                else if (currentTool === 'erase') setCell(cellX, cellY, 0);
+                updateStats();
+                render();
+            }
+        }
+
+        function onMouseMove(e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            const cellX = Math.floor((x - offsetX) / (cellSize * zoom));
+            const cellY = Math.floor((y - offsetY) / (cellSize * zoom));
+            document.getElementById('pos').textContent = `${cellX}, ${cellY}`;
+            
+            if (isPanning) {
+                offsetX = x - panStartX;
+                offsetY = y - panStartY;
+                render();
+            } else if (isDragging) {
+                offsetX = x - dragStartX;
+                offsetY = y - dragStartY;
+                render();
+            } else if (isDrawing && (cellX !== lastX || cellY !== lastY)) {
+                if (currentTool === 'draw') drawLine(lastX, lastY, cellX, cellY, 1);
+                else if (currentTool === 'erase') drawLine(lastX, lastY, cellX, cellY, 0);
+                lastX = cellX; lastY = cellY;
+                updateStats();
+                render();
+            }
+        }
+
+        function onMouseUp() {
+            isDragging = false;
+            isDrawing = false;
+            isPanning = false;
+            if (currentTool === 'pan') canvas.style.cursor = 'grab';
+            else canvas.style.cursor = 'crosshair';
+        }
+
+        function onWheel(e) {
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? 0.9 : 1.1;
+            zoom *= delta;
+            zoom = Math.max(0.1, Math.min(5, zoom));
+            render();
+        }
+        
+        // Line drawing to fill gaps when moving fast
+        function drawLine(x0, y0, x1, y1, value) {
+            const dx = Math.abs(x1 - x0), dy = Math.abs(y1 - y0);
+            const sx = x0 < x1 ? 1 : -1;
+            const sy = y0 < y1 ? 1 : -1;
+            let err = dx - dy;
+            
+            while (true) {
+                setCell(x0, y0, value);
+                if (x0 === x1 && y0 === y1) break;
+                const e2 = 2 * err;
+                if (e2 > -dy) { err -= dy; x0 += sx; }
+                if (e2 < dx) { err += dx; y0 += sy; }
+            }
+        }
+        
+        // Touch event handlers
+        function getTouchPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const touch = e.touches[0] || e.changedTouches[0];
+            return { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
+        }
+        
+        function onTouchStart(e) {
+            e.preventDefault();
+            const pos = getTouchPos(e);
+            const cellX = Math.floor((pos.x - offsetX) / (cellSize * zoom));
+            const cellY = Math.floor((pos.y - offsetY) / (cellSize * zoom));
+            lastX = cellX; lastY = cellY;
+            isDrawing = true;
+            
+            if (currentTool === 'draw') setCell(cellX, cellY, 1);
+            else if (currentTool === 'erase') setCell(cellX, cellY, 0);
+            updateStats();
+            render();
+        }
+        
+        function onTouchMove(e) {
+            e.preventDefault();
+            if (!isDrawing) return;
+            const pos = getTouchPos(e);
+            const cellX = Math.floor((pos.x - offsetX) / (cellSize * zoom));
+            const cellY = Math.floor((pos.y - offsetY) / (cellSize * zoom));
+            
+            if (cellX !== lastX || cellY !== lastY) {
+                if (currentTool === 'draw') drawLine(lastX, lastY, cellX, cellY, 1);
+                else if (currentTool === 'erase') drawLine(lastX, lastY, cellX, cellY, 0);
+                lastX = cellX; lastY = cellY;
+                updateStats();
+                render();
+            }
+        }
+        
+        function onTouchEnd(e) {
+            e.preventDefault();
+            isDrawing = false;
+        }
+
+        // Start
+        init();
+    </script>
+</body>
+</html>
