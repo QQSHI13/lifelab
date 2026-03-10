@@ -445,11 +445,14 @@
             const currentRuleKey = Object.keys(RULES).find(k => RULES[k] === rule) || 'B3/S23';
             
             (PATTERNS[category] || []).forEach(p => {
+                // Support both single rule string and array of rules
+                const patternRules = p.rule ? (Array.isArray(p.rule) ? p.rule : [p.rule]) : [];
                 // Show pattern if it matches current rule or has no rule specified
-                if (!p.rule || p.rule === currentRuleKey) {
+                if (patternRules.length === 0 || patternRules.includes(currentRuleKey)) {
                     const btn = document.createElement('button');
                     btn.className = 'pattern-btn';
-                    const ruleLabel = p.rule && p.rule !== 'B3/S23' ? ` [${p.rule}]` : '';
+                    // Show first rule label if not default B3/S23
+                    const ruleLabel = patternRules.length > 0 && patternRules[0] !== 'B3/S23' ? ` [${patternRules[0]}${patternRules.length > 1 ? '+' : ''}]` : '';
                     btn.innerHTML = `<span class="name">${p.name}${ruleLabel}</span><span class="desc">${p.desc}</span>`;
                     btn.onclick = () => loadPattern(p);
                     list.appendChild(btn);

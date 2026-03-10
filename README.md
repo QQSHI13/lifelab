@@ -68,6 +68,29 @@ Conway's Game of Life — an advanced cellular automaton simulator with a compre
 - Single-file HTML with embedded CSS/JS (~25KB)
 - No dependencies
 
+## Pattern JSON Schema
+
+Patterns are stored in `patterns/*.json` files with the following structure:
+
+```json
+{
+  "category": "still",
+  "patterns": [
+    {
+      "name": "Block",
+      "desc": "4 cells",
+      "cells": [[0,0],[1,0],[0,1],[1,1]],
+      "rule": ["B3/S23", "B36/S23"]
+    }
+  ]
+}
+```
+
+The `rule` field accepts either:
+- A single rule string: `"rule": "B3/S23"`
+- An array of compatible rules: `"rule": ["B3/S23", "B36/S23"]`
+- Omit for patterns that work with any rule
+
 ## Credits
 
 Built by **QQ** with **Nova** ☄️

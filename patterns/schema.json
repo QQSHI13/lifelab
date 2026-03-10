@@ -1,0 +1,58 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "LifeLab Pattern Collection",
+  "description": "Schema for cellular automaton pattern files",
+  "type": "object",
+  "required": ["category", "patterns"],
+  "properties": {
+    "category": {
+      "type": "string",
+      "description": "Category name (e.g., guns, ships, osc, still, meth)"
+    },
+    "patterns": {
+      "type": "array",
+      "description": "List of patterns in this category",
+      "items": {
+        "type": "object",
+        "required": ["name", "desc", "cells"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Pattern name"
+          },
+          "desc": {
+            "type": "string",
+            "description": "Short description of the pattern"
+          },
+          "cells": {
+            "type": "array",
+            "description": "Array of [x, y] coordinates for live cells",
+            "items": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 2,
+              "items": { "type": "integer" }
+            }
+          },
+          "rule": {
+            "oneOf": [
+              {
+                "type": "string",
+                "description": "Single rule string (e.g., B3/S23, B36/S23)"
+              },
+              {
+                "type": "array",
+                "description": "Multiple compatible rules",
+                "items": {
+                  "type": "string",
+                  "description": "Rule string"
+                }
+              }
+            ],
+            "description": "Rule(s) this pattern works with. Omit for universal patterns."
+          }
+        }
+      }
+    }
+  }
+}
