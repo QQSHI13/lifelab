@@ -3,8 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#58a6ff">
+    <meta name="description" content="Interactive cellular automaton simulator with Conway's Life, HighLife, Seeds, and Day & Night rules">
     <title>LifeLab - Cellular Automaton Explorer</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔬</text></svg>">
+    <link rel="manifest" href="./manifest.json">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
         
@@ -895,6 +898,69 @@
             isDrawing = false;
         }
 
+        // PWA Service Worker Registration with auto-refresh
+        if ('serviceWorker' in navigator) {
+            let refreshing = false;
+            
+            // Detect hard reload (Cmd+Shift+R / Ctrl+Shift+R)
+            const isHardReload = () => {
+                // Check navigation type
+                if (performance.getEntriesByType && performance.getEntriesByType('navigation').length > 0) {
+                    const navEntry = performance.getEntriesByType('navigation')[0];
+                    if (navEntry.type === 'reload') {
+                        // Check if it's a force reload by looking at the timing
+                        return navEntry.loadEventEnd - navEntry.startTime < 500;
+                    }
+                }
+                return false;
+            };
+            
+            // Register service worker
+            navigator.serviceWorker.register('./sw.js')
+                .then((registration) => {
+                    console.log('[PWA] SW registered:', registration.scope);
+                    
+                    // On hard reload, tell SW to skip waiting
+                    if (isHardReload()) {
+                        console.log('[PWA] Hard reload detected, updating SW...');
+                        if (registration.waiting) {
+                            registration.waiting.postMessage('skipWaiting');
+                        }
+                        registration.update();
+                    }
+                    
+                    // Listen for new service worker
+                    registration.addEventListener('updatefound', () => {
+                        const newWorker = registration.installing;
+                        console.log('[PWA] New SW installing...');
+                        
+                        newWorker.addEventListener('statechange', () => {
+                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                console.log('[PWA] New SW installed, waiting for activation...');
+                                // New version available - can show update notification here
+                            }
+                        });
+                    });
+                })
+                .catch((err) => {
+                    console.log('[PWA] SW registration failed:', err);
+                });
+            
+            // Auto-refresh when controller changes (new SW activates)
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (!refreshing) {
+                    refreshing = true;
+                    console.log('[PWA] Controller changed, refreshing...');
+                    window.location.reload();
+                }
+            });
+            
+            // Listen for messages from SW
+            navigator.serviceWorker.addEventListener('message', (event) => {
+                console.log('[PWA] Message from SW:', event.data);
+            });
+        }
+        
         // Start
         init();
     </script>
