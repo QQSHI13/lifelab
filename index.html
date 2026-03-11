@@ -154,6 +154,7 @@
                     <button class="tab" data-cat="osc">Osc</button>
                     <button class="tab" data-cat="still">Still</button>
                     <button class="tab" data-cat="meth">Meth</button>
+                    <button class="tab" data-cat="seeds">Seeds</button>
                 </div>
                 <div class="pattern-list-scroll" id="pattern-list"></div>
             </div>
@@ -196,23 +197,35 @@
                     <div class="modal-section-title">Keyboard Shortcuts</div>
                     <div class="hint-item">
                         <div class="hint-key">Space</div>
-                        <div class="hint-text">Hold to pan the canvas (or use middle mouse button)</div>
+                        <div class="hint-text">Play/pause the simulation (hold to pan)</div>
                     </div>
                     <div class="hint-item">
-                        <div class="hint-key">Click</div>
-                        <div class="hint-text">Draw or erase cells depending on selected tool</div>
+                        <div class="hint-key">S</div>
+                        <div class="hint-text">Step forward one generation</div>
+                    </div>
+                    <div class="hint-item">
+                        <div class="hint-key">Ctrl+Z</div>
+                        <div class="hint-text">Undo/step back one generation</div>
+                    </div>
+                    <div class="hint-item">
+                        <div class="hint-key">Ctrl+Y</div>
+                        <div class="hint-text">Redo/step forward</div>
+                    </div>
+                    <div class="hint-item">
+                        <div class="hint-key">C</div>
+                        <div class="hint-text">Clear the grid</div>
+                    </div>
+                    <div class="hint-item">
+                        <div class="hint-key">R</div>
+                        <div class="hint-text">Fill with random pattern</div>
+                    </div>
+                    <div class="hint-item">
+                        <div class="hint-key">Middle Click</div>
+                        <div class="hint-text">Pan the canvas (or hold Space)</div>
                     </div>
                     <div class="hint-item">
                         <div class="hint-key">Scroll</div>
                         <div class="hint-text">Zoom in/out on the canvas</div>
-                    </div>
-                    <div class="hint-item">
-                        <div class="hint-key">Play</div>
-                        <div class="hint-text">Start/pause the simulation</div>
-                    </div>
-                    <div class="hint-item">
-                        <div class="hint-key">Step</div>
-                        <div class="hint-text">Advance one generation manually</div>
                     </div>
                 </div>
 
@@ -271,7 +284,7 @@
         const FALLBACK_PATTERNS = {
             guns: [
                 { name: 'Gosper Gun', desc: 'First glider gun', cells: [[24,0],[22,1],[24,1],[12,2],[13,2],[20,2],[21,2],[34,2],[35,2],[11,3],[15,3],[20,3],[21,3],[34,3],[35,3],[0,4],[1,4],[10,4],[16,4],[20,4],[21,4],[0,5],[1,5],[10,5],[14,5],[16,5],[17,5],[22,5],[24,5],[10,6],[16,6],[24,6],[11,7],[15,7],[12,8],[13,8]], rule: 'B3/S23' },
-                { name: 'Simkin Gun', desc: 'Period 120 glider gun', cells: [[0,0],[1,0],[7,0],[8,0],[0,1],[1,1],[7,1],[8,1],[4,3],[5,3],[4,4],[5,4],[2,6],[3,6],[2,7],[3,7],[15,9],[16,9],[19,9],[20,9],[15,10],[16,10],[19,10],[20,10]], rule: 'B3/S23' }
+                { name: 'Simkin Gun', desc: 'Period 120 glider gun', cells: [[4,5],[4,6],[5,5],[5,6],[14,4],[14,5],[15,3],[15,6],[16,3],[16,6],[17,4],[17,5],[24,3],[24,4],[24,5],[25,3],[25,4],[25,5],[28,2],[28,7],[30,2],[30,3],[30,6],[30,7]], rule: 'B3/S23' }
             ],
             ships: [
                 { name: 'Glider', desc: 'Period 4 diagonal', cells: [[1,0],[2,1],[0,2],[1,2],[2,2]], rule: 'B3/S23' },
@@ -294,14 +307,14 @@
             meth: [
                 { name: 'R-pentomino', desc: '1103 gens', cells: [[1,0],[2,0],[0,1],[1,1],[1,2]], rule: 'B3/S23' },
                 { name: 'Diehard', desc: '130 gens', cells: [[6,0],[0,1],[1,1],[1,2],[5,2],[6,2],[7,2]], rule: 'B3/S23' },
-                { name: 'Acorn', desc: '5206 gens', cells: [[1,0],[3,1],[0,2],[1,2],[2,2],[4,2],[5,2],[2,3]], rule: 'B3/S23' },
+                { name: 'Acorn', desc: '5206 gens', cells: [[1,0],[3,1],[0,2],[1,2],[2,2],[4,2],[5,2],[6,2]], rule: 'B3/S23' },
                 { name: 'Pi Heptomino', desc: '175 gens, explosive', cells: [[0,0],[1,0],[2,0],[0,1],[2,1],[0,2],[2,2]], rule: 'B3/S23' }
             ]
         };
 
         // Load patterns from JSON files
         async function loadPatterns() {
-            const categories = ['guns', 'ships', 'osc', 'still', 'meth'];
+            const categories = ['guns', 'ships', 'osc', 'still', 'meth', 'seeds'];
             try {
                 const results = await Promise.all(
                     categories.map(cat => fetch(`patterns/${cat}.json`).then(r => r.json()))
@@ -395,12 +408,38 @@
             canvas.onmouseleave = onMouseUp;
             canvas.onwheel = onWheel;
             
-            // Keyboard shortcuts for pan
+            // Keyboard shortcuts
             document.addEventListener('keydown', (e) => {
                 if (e.code === 'Space' && !e.repeat) {
                     e.preventDefault();
                     spacePressed = true;
                     canvas.style.cursor = 'grab';
+                }
+                // Space for play/pause when not pressed with other keys
+                if (e.code === 'Space' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                    // Handled on keyup to distinguish from panning
+                }
+                // Ctrl/Cmd + Z for undo/step back
+                if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+                    e.preventDefault();
+                    stepBack();
+                }
+                // Ctrl/Cmd + Y or Ctrl/Cmd + Shift + Z for redo (not implemented yet, use step)
+                if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+                    e.preventDefault();
+                    step();
+                }
+                // 'S' key for step
+                if (e.key === 's' && !e.ctrlKey && !e.metaKey) {
+                    step();
+                }
+                // 'C' key for clear
+                if (e.key === 'c' && !e.ctrlKey && !e.metaKey) {
+                    clear();
+                }
+                // 'R' key for random
+                if (e.key === 'r' && !e.ctrlKey && !e.metaKey) {
+                    randomFill();
                 }
             });
             
@@ -410,6 +449,10 @@
                     spacePressed = false;
                     if (currentTool === 'pan') canvas.style.cursor = 'grab';
                     else canvas.style.cursor = 'crosshair';
+                    // If we weren't panning, toggle play/pause
+                    if (!isPanning) {
+                        togglePlay();
+                    }
                 }
             });
             
@@ -453,7 +496,14 @@
                     btn.className = 'pattern-btn';
                     // Show first rule label if not default B3/S23
                     const ruleLabel = patternRules.length > 0 && patternRules[0] !== 'B3/S23' ? ` [${patternRules[0]}${patternRules.length > 1 ? '+' : ''}]` : '';
-                    btn.innerHTML = `<span class="name">${p.name}${ruleLabel}</span><span class="desc">${p.desc}</span>`;
+                    const nameSpan = document.createElement('span');
+                    nameSpan.className = 'name';
+                    nameSpan.textContent = p.name + ruleLabel;
+                    const descSpan = document.createElement('span');
+                    descSpan.className = 'desc';
+                    descSpan.textContent = p.desc;
+                    btn.appendChild(nameSpan);
+                    btn.appendChild(descSpan);
                     btn.onclick = () => loadPattern(p);
                     list.appendChild(btn);
                 }
@@ -480,12 +530,22 @@
             else grid.delete(key);
         }
 
+        // Toroidal (wrap-around) grid support
+        let toroidalMode = true;
+        
         function countNeighbors(x, y) {
             let count = 0;
             for (let dy = -1; dy <= 1; dy++) {
                 for (let dx = -1; dx <= 1; dx++) {
                     if (dx === 0 && dy === 0) continue;
-                    count += getCell(x + dx, y + dy);
+                    let nx = x + dx;
+                    let ny = y + dy;
+                    if (toroidalMode) {
+                        // Wrap around edges
+                        nx = ((nx % width) + width) % width;
+                        ny = ((ny % height) + height) % height;
+                    }
+                    count += getCell(nx, ny);
                 }
             }
             return count;
@@ -531,13 +591,21 @@
 
         function saveHistory() {
             if (history.length > 50) history.shift();
-            history.push(new Map(grid));
+            history.push({
+                grid: new Map(grid),
+                generation: generation,
+                births: births,
+                deaths: deaths
+            });
         }
 
         function stepBack() {
             if (history.length === 0) return;
-            grid = history.pop();
-            generation = Math.max(0, generation - 1);
+            const state = history.pop();
+            grid = state.grid;
+            generation = state.generation;
+            births = state.births;
+            deaths = state.deaths;
             updateStats();
             render();
         }
@@ -615,8 +683,18 @@
             document.getElementById('zoom').textContent = Math.round(zoom * 100) + '%';
         }
 
+        // Respect user's motion preferences
+        const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+        let reducedMotion = prefersReducedMotion.matches;
+        prefersReducedMotion.addEventListener('change', (e) => {
+            reducedMotion = e.matches;
+            if (reducedMotion && isPlaying) {
+                togglePlay(); // Pause when reduced motion is enabled
+            }
+        });
+        
         function loop(timestamp) {
-            if (isPlaying && timestamp - lastFrame > 1000 / speed) {
+            if (isPlaying && !reducedMotion && timestamp - lastFrame > 1000 / speed) {
                 step();
                 lastFrame = timestamp;
             }
@@ -719,20 +797,51 @@
             }
         }
         
-        // Touch event handlers
+        // Touch event handlers with panning support
+        let touchStartDist = 0;
+        let touchStartZoom = 1;
+        let isTouchPanning = false;
+        let touchStartX = 0, touchStartY = 0;
+        let touchStartOffsetX = 0, touchStartOffsetY = 0;
+        
         function getTouchPos(e) {
             const rect = canvas.getBoundingClientRect();
             const touch = e.touches[0] || e.changedTouches[0];
             return { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
         }
         
+        function getTouchDistance(e) {
+            if (e.touches.length < 2) return 0;
+            const dx = e.touches[0].clientX - e.touches[1].clientX;
+            const dy = e.touches[0].clientY - e.touches[1].clientY;
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+        
         function onTouchStart(e) {
             e.preventDefault();
+            
+            // Two finger pan/zoom
+            if (e.touches.length === 2) {
+                isTouchPanning = true;
+                isDrawing = false;
+                touchStartDist = getTouchDistance(e);
+                touchStartZoom = zoom;
+                // Center point for panning
+                const rect = canvas.getBoundingClientRect();
+                touchStartX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+                touchStartY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+                touchStartOffsetX = offsetX;
+                touchStartOffsetY = offsetY;
+                return;
+            }
+            
+            // Single finger draw
             const pos = getTouchPos(e);
             const cellX = Math.floor((pos.x - offsetX) / (cellSize * zoom));
             const cellY = Math.floor((pos.y - offsetY) / (cellSize * zoom));
             lastX = cellX; lastY = cellY;
             isDrawing = true;
+            isTouchPanning = false;
             
             if (currentTool === 'draw') setCell(cellX, cellY, 1);
             else if (currentTool === 'erase') setCell(cellX, cellY, 0);
@@ -742,7 +851,29 @@
         
         function onTouchMove(e) {
             e.preventDefault();
-            if (!isDrawing) return;
+            
+            // Two finger pan/zoom
+            if (e.touches.length === 2 && isTouchPanning) {
+                const rect = canvas.getBoundingClientRect();
+                const centerX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+                const centerY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+                
+                // Handle zoom
+                const dist = getTouchDistance(e);
+                if (touchStartDist > 0) {
+                    zoom = touchStartZoom * (dist / touchStartDist);
+                    zoom = Math.max(0.1, Math.min(5, zoom));
+                }
+                
+                // Handle pan
+                offsetX = touchStartOffsetX + (centerX - touchStartX);
+                offsetY = touchStartOffsetY + (centerY - touchStartY);
+                render();
+                return;
+            }
+            
+            // Single finger draw
+            if (!isDrawing || isTouchPanning) return;
             const pos = getTouchPos(e);
             const cellX = Math.floor((pos.x - offsetX) / (cellSize * zoom));
             const cellY = Math.floor((pos.y - offsetY) / (cellSize * zoom));
@@ -758,6 +889,9 @@
         
         function onTouchEnd(e) {
             e.preventDefault();
+            if (e.touches.length < 2) {
+                isTouchPanning = false;
+            }
             isDrawing = false;
         }
 

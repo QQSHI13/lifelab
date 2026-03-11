@@ -6,14 +6,15 @@ Conway's Game of Life — an advanced cellular automaton simulator with a compre
 
 ## Features
 
-- **80x60 Grid** — Toroidal (wrap-around) edges
+- **80x60 Grid** — Infinite canvas with pan and zoom
 - **Play/Pause** — Smooth animation loop
-- **Step Forward** — Advance one generation at a time
+- **Step Forward/Back** — Navigate through generations
 - **Reset/Clear** — Start fresh or clear completely
 - **Speed Control** — 1-60 FPS slider
 - **Random Seed** — Generate random patterns
+- **Multiple Rules** — Conway's Life, HighLife, Seeds, Day & Night
 
-## Pattern Library (29 patterns)
+## Pattern Library (30+ patterns)
 
 ### Guns (2)
 - **Gosper Glider Gun** — Period 30 glider gun
@@ -53,19 +54,23 @@ Conway's Game of Life — an advanced cellular automaton simulator with a compre
 - **Click** — Draw cells
 - **Right-click** — Erase cells
 - **Drag** — Paint/erase continuously
+- **Space** — Play/pause simulation
+- **Middle-click/Space+drag** — Pan canvas
+- **Scroll** — Zoom in/out
 
 ## Features
 
-- **Shareable URLs** — Pattern encoded in URL
-- **Stats** — Generation count, population, max population
+- **Undo/Redo** — Step back through generations
+- **Stats** — Generation count, population, births, deaths
 - **GitHub Dark Theme** — `#0d1117` background, `#58a6ff` live cells
-- **Canvas Rendering** — Efficient with glow effects
+- **Canvas Rendering** — Efficient with pan and zoom
+- **Touch Support** — Mobile-friendly with panning
 
 ## Technical Details
 
-- Uses `Uint8Array` for efficient grid storage
-- Conway's rules: B3/S23 (Born with 3, Survive with 2-3)
-- Single-file HTML with embedded CSS/JS (~25KB)
+- Uses `Map` for sparse grid storage (efficient for large patterns)
+- Supports multiple rule sets: B3/S23, B36/S23, B2/S, B3678/S34678
+- Single-file HTML with embedded CSS/JS (~30KB)
 - No dependencies
 
 ## Pattern JSON Schema
