@@ -358,6 +358,9 @@
         let grid = new Map(), history = [], currentTool = 'draw';
         let rule = RULES['B3/S23'];
         let population = 0, births = 0, deaths = 0;
+        let spacePressed = false;
+        let isPanning = false;
+        let panStartX, panStartY;
 
         // Init
         function init() {
@@ -706,10 +709,6 @@
 
         // Mouse handling
         let lastX, lastY, isDrawing;
-
-        let isPanning = false;
-        let panStartX, panStartY;
-        let spacePressed = false;
 
         function onMouseDown(e) {
             const rect = canvas.getBoundingClientRect();
