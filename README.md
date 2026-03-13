@@ -4,102 +4,108 @@ Conway's Game of Life — an advanced cellular automaton simulator with a compre
 
 **Live Demo**: https://qqshi13.github.io/lifelab/
 
-## Features
+---
 
-- **80x60 Grid** — Infinite canvas with pan and zoom
-- **Play/Pause** — Smooth animation loop
-- **Step Forward/Back** — Navigate through generations
-- **Reset/Clear** — Start fresh or clear completely
-- **Speed Control** — 1-60 FPS slider
-- **Random Seed** — Generate random patterns
-- **Multiple Rules** — Conway's Life, HighLife, Seeds, Day & Night
+## ✨ Features
 
-## Pattern Library (30+ patterns)
+### Core Simulation
+- **🎮 80x60 Grid** — Infinite canvas with smooth pan and zoom
+- **⏯️ Play/Pause** — Smooth animation loop at your preferred speed
+- **⏭️ Step Forward/Back** — Navigate through generations frame by frame
+- **🔄 Reset/Clear** — Start fresh with random seed or clear completely
+- **⚡ Speed Control** — Adjustable FPS from 1 to 60
 
-### Guns (2)
+### Multiple Rulesets
+- **Conway's Life** — Classic B3/S23 rules
+- **HighLife** — B36/S23 (includes replicator pattern)
+- **Seeds** — B2/S (explosive growth)
+- **Day & Night** — B3678/S34678 (symmetric rules)
+
+### Pattern Library (30+ Patterns)
+
+#### Guns
 - **Gosper Glider Gun** — Period 30 glider gun
-- **Simkin Glider Gun** — Period 120 glider gun
 
-### Spaceships (8)
-- Glider (period 4, diagonal)
-- Lightweight Spaceship (LWSS)
-- Middleweight Spaceship (MWSS)
-- Heavyweight Spaceship (HWSS)
-- Replicator (HighLife)
-- Bomber (HighLife c/6)
-- Butterfly (Day&Night)
-- Snail (Day&Night p4)
+#### Spaceships
+- **Glider** — The classic diagonal ship
+- **Lightweight/Middleweight/Heavyweight** — Orthogonal ships
 
-### Oscillators (8)
-- Blinker (period 2)
-- Toad (period 2)
-- Beacon (period 2)
-- Pulsar (period 3)
-- Pentadecathlon (period 15)
-- Figure Eight (HighLife period 8)
-- D&N P2/P4 (Day&Night)
+#### Oscillators
+- **Blinker, Toad, Beacon** — Period 2
+- **Pulsar, Pentadecathlon** — Period 3 and 15
 
-### Still Lifes (6)
-- Block, Beehive, Loaf, Boat
-- Honey Farm
-- White Dwarf (Day&Night)
+#### Still Lifes
+- **Block, Beehive, Loaf, Boat** — Stable patterns
 
-### Methuselahs (5)
-- R-pentomino, Diehard, Acorn
-- Pi Heptomino
-- Multiple Replicators
+#### Methuselahs
+- **R-pentomino** — Evolves for 1103 generations
 
-## Controls
+And many more! Patterns are organized in a searchable sidebar library.
 
-- **Click** — Draw cells
-- **Right-click** — Erase cells
-- **Drag** — Paint/erase continuously
-- **Space** — Play/pause simulation
-- **Middle-click/Space+drag** — Pan canvas
-- **Scroll** — Zoom in/out
+---
 
-## Features
+## 🚀 Usage
 
-- **Undo/Redo** — Step back through generations
-- **Stats** — Generation count, population, births, deaths
-- **GitHub Dark Theme** — `#0d1117` background, `#58a6ff` live cells
-- **Canvas Rendering** — Efficient with pan and zoom
-- **Touch Support** — Mobile-friendly with panning
+### Controls
+- **Left Click** — Toggle cell state (draw/erase)
+- **Drag** — Draw multiple cells
+- **Space** — Play/Pause
+- **Arrow Keys** — Step forward/backward
+- **+/-** — Zoom in/out
+- **R** — Random seed
+- **C** — Clear grid
 
-## Technical Details
+### UI Controls
+- Play/Pause button for animation control
+- Speed slider (1-60 FPS)
+- Generation counter
+- Pattern library sidebar with categories
+- Rule selector dropdown
 
-- Uses `Map` for sparse grid storage (efficient for large patterns)
-- Supports multiple rule sets: B3/S23, B36/S23, B2/S, B3678/S34678
-- Single-file HTML with embedded CSS/JS (~30KB)
-- No dependencies
+---
 
-## Pattern JSON Schema
+## 🛠️ Technologies
 
-Patterns are stored in `patterns/*.json` files with the following structure:
+- **Frontend**: Vanilla HTML5 Canvas API
+- **Language**: JavaScript (ES6+)
+- **Styling**: CSS Variables, Flexbox
+- **Fonts**: JetBrains Mono for the generation counter
+- **Features**: PWA support, responsive design, dark theme
 
-```json
-{
-  "category": "still",
-  "patterns": [
-    {
-      "name": "Block",
-      "desc": "4 cells",
-      "cells": [[0,0],[1,0],[0,1],[1,1]],
-      "rule": ["B3/S23", "B36/S23"]
-    }
-  ]
-}
+---
+
+## 📦 Installation (Self-Host)
+
+```bash
+# Clone the repository
+git clone https://github.com/QQSHI13/lifelab.git
+
+# Open in browser
+cd lifelab
+# Open index.html in your browser or serve with any static server
 ```
 
-The `rule` field accepts either:
-- A single rule string: `"rule": "B3/S23"`
-- An array of compatible rules: `"rule": ["B3/S23", "B36/S23"]`
-- Omit for patterns that work with any rule
+---
 
-## Credits
+## 🎓 Learn More
 
-Built by **QQ** with **Nova** ☄️
+- [Conway's Game of Life (Wikipedia)](https://en.wikipedia.org/wiki/Conway%27s_Game_of_Life)
+- [LifeWiki](https://conwaylife.com/wiki/) — Comprehensive pattern database
 
-Running on [OpenClaw](https://openclaw.ai)
+---
 
-Inspired by John Conway's mathematical masterpiece.
+## 📝 License
+
+This project is licensed under the **GNU General Public License v3.0 (GPL-3.0)**.
+
+See [LICENSE](./LICENSE) for details.
+
+---
+
+## 🙏 Credits
+
+Built with ❤️ by **QQ** and **Nova** ☄️
+
+Powered by [OpenClaw](https://openclaw.ai)
+
+Pattern definitions adapted from LifeWiki and classic CA literature.
