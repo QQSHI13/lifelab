@@ -455,17 +455,18 @@
                     spacePressed = false;
                     if (currentTool === 'pan') canvas.style.cursor = 'grab';
                     else canvas.style.cursor = 'crosshair';
-                    // If we weren't panning, toggle play/pause
-                    if (!isPanning) {
+                    // If we weren't panning during this space hold, toggle play/pause
+                    if (!spacePanningOccurred) {
                         togglePlay();
                     }
+                    spacePanningOccurred = false;
                 }
             });
             
-            // Touch support
-            canvas.ontouchstart = onTouchStart;
-            canvas.ontouchmove = onTouchMove;
-            canvas.ontouchend = onTouchEnd;
+            // Touch support with passive: false for preventDefault
+            canvas.addEventListener('touchstart', onTouchStart, {passive: false});
+            canvas.addEventListener('touchmove', onTouchMove, {passive: false});
+            canvas.addEventListener('touchend', onTouchEnd, {passive: false});
             
             loadPatterns();
             render();
@@ -558,7 +559,10 @@
         }
 
         function step() {
+            const birthsBefore = births;
+            const deathsBefore = deaths;
             saveHistory();
+            futureHistory = [];
             const newGrid = new Map();
             const checked = new Set();
             births = 0; deaths = 0;
@@ -608,6 +612,31 @@
         function stepBack() {
             if (history.length === 0) return;
             const state = history.pop();
+            futureHistory.push({
+                grid: new Map(grid),
+                generation: generation,
+                births: births,
+                deaths: deaths
+            });
+            if (futureHistory.length > 50) futureHistory.shift();
+            grid = state.grid;
+            generation = state.generation;
+            births = state.births;
+            deaths = state.deaths;
+            updateStats();
+            render();
+        }
+
+        function stepForward() {
+            if (futureHistory.length === 0) return;
+            const state = futureHistory.pop();
+            history.push({
+                grid: new Map(grid),
+                generation: generation,
+                births: births,
+                deaths: deaths
+            });
+            if (history.length > 50) history.shift();
             grid = state.grid;
             generation = state.generation;
             births = state.births;
@@ -647,7 +676,7 @@
             document.getElementById('births').textContent = births;
             document.getElementById('deaths').textContent = deaths;
             document.getElementById('gen').textContent = generation;
-            document.getElementById('density').textContent = Math.round(population / (width * height) * 100) + '%';
+            document.getElementById('density').textContent = (width > 0 && height > 0) ? Math.round(population / (width * height) * 100) + '%' : '0%';
         }
 
         function render() {
@@ -718,6 +747,7 @@
             // Pan with middle mouse or space+left click
             if (e.button === 1 || (spacePressed && e.button === 0)) {
                 isPanning = true;
+                if (spacePressed) spacePanningOccurred = true;
                 panStartX = x - offsetX;
                 panStartY = y - offsetY;
                 canvas.style.cursor = 'grabbing';
@@ -961,6 +991,19 @@
         }
         
         // Start
+        init();
+    </script>
+</body>
+</html>
+     // Start
+        init();
+    </script>
+</body>
+</html>
+t>
+</body>
+</html>
+     // Start
         init();
     </script>
 </body>
