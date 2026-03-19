@@ -242,6 +242,18 @@
                 </div>
 
                 <div class="modal-section">
+                    <div class="modal-section-title">Grid Settings</div>
+                    <div class="hint-item">
+                        <div class="hint-text">
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                <input type="checkbox" id="toroidal-toggle" checked style="cursor: pointer;">
+                                <span>Toroidal mode (wrap edges)</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-section">
                     <div class="modal-section-title">Rule Sets</div>
                     
                     <div class="rule-info">
@@ -364,10 +376,11 @@
         let canvas, ctx, width, height, cellSize = 10, zoom = 1;
         let offsetX = 0, offsetY = 0, isDragging = false, dragStartX, dragStartY;
         let isPlaying = false, generation = 0, speed = 20, lastFrame = 0;
-        let grid = new Map(), history = [], currentTool = 'draw';
+        let grid = new Map(), history = [], futureHistory = [], currentTool = 'draw';
         let rule = RULES['B3/S23'];
         let population = 0, births = 0, deaths = 0;
         let spacePressed = false;
+        let spacePanningOccurred = false;
         let isPanning = false;
         let panStartX, panStartY;
 
@@ -407,6 +420,9 @@
             document.getElementById('btn-close-settings').onclick = () => settingsModal.classList.remove('active');
             settingsModal.onclick = (e) => { if (e.target === settingsModal) settingsModal.classList.remove('active'); };
             
+            // Toroidal mode toggle
+            document.getElementById('toroidal-toggle').onchange = (e) => { toroidalMode = e.target.checked; };
+            
             // Pattern tabs
             document.querySelectorAll('.tab').forEach(tab => {
                 tab.onclick = () => {
@@ -439,21 +455,21 @@
                     e.preventDefault();
                     stepBack();
                 }
-                // Ctrl/Cmd + Y or Ctrl/Cmd + Shift + Z for redo (not implemented yet, use step)
+                // Ctrl/Cmd + Y or Ctrl/Cmd + Shift + Z for redo/step forward
                 if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
                     e.preventDefault();
+                    stepForward();
+                }
+                // 'S' key for step (not when typing in inputs)
+                if (e.key === 's' && !e.ctrlKey && !e.metaKey && !['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) {
                     step();
                 }
-                // 'S' key for step
-                if (e.key === 's' && !e.ctrlKey && !e.metaKey) {
-                    step();
-                }
-                // 'C' key for clear
-                if (e.key === 'c' && !e.ctrlKey && !e.metaKey) {
+                // 'C' key for clear (not when typing in inputs)
+                if (e.key === 'c' && !e.ctrlKey && !e.metaKey && !['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) {
                     clear();
                 }
-                // 'R' key for random
-                if (e.key === 'r' && !e.ctrlKey && !e.metaKey) {
+                // 'R' key for random (not when typing in inputs)
+                if (e.key === 'r' && !e.ctrlKey && !e.metaKey && !['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) {
                     randomFill();
                 }
             });
