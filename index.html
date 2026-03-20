@@ -372,6 +372,10 @@
             return { born, survive, name: 'Custom' };
         }
 
+        // Fixed grid dimensions for toroidal wrapping (independent of viewport)
+        const GRID_WIDTH = 200;
+        const GRID_HEIGHT = 150;
+
         // State
         let canvas, ctx, width, height, cellSize = 10, zoom = 1;
         let offsetX = 0, offsetY = 0, isDragging = false, dragStartX, dragStartY;
@@ -544,7 +548,7 @@
 
         function loadPattern(pattern) {
             saveHistory();
-            const cx = Math.floor(width / 2), cy = Math.floor(height / 2);
+            const cx = Math.floor(GRID_WIDTH / 2), cy = Math.floor(GRID_HEIGHT / 2);
             pattern.cells.forEach(([x, y]) => {
                 grid.set(`${cx + x},${cy + y}`, 1);
             });
@@ -573,9 +577,9 @@
                     let nx = x + dx;
                     let ny = y + dy;
                     if (toroidalMode) {
-                        // Wrap around edges
-                        nx = ((nx % width) + width) % width;
-                        ny = ((ny % height) + height) % height;
+                        // Wrap around fixed grid edges
+                        nx = ((nx % GRID_WIDTH) + GRID_WIDTH) % GRID_WIDTH;
+                        ny = ((ny % GRID_HEIGHT) + GRID_HEIGHT) % GRID_HEIGHT;
                     }
                     count += getCell(nx, ny);
                 }
@@ -597,7 +601,11 @@
                 const [x, y] = key.split(',').map(Number);
                 for (let dy = -1; dy <= 1; dy++) {
                     for (let dx = -1; dx <= 1; dx++) {
-                        const cx = x + dx, cy = y + dy;
+                        let cx = x + dx, cy = y + dy;
+                        if (toroidalMode) {
+                            cx = ((cx % GRID_WIDTH) + GRID_WIDTH) % GRID_WIDTH;
+                            cy = ((cy % GRID_HEIGHT) + GRID_HEIGHT) % GRID_HEIGHT;
+                        }
                         const ckey = `${cx},${cy}`;
                         if (checked.has(ckey)) continue;
                         checked.add(ckey);
@@ -681,8 +689,8 @@
         function randomFill() {
             saveHistory();
             grid.clear();
-            for (let y = 0; y < height; y++) {
-                for (let x = 0; x < width; x++) {
+            for (let y = 0; y < GRID_HEIGHT; y++) {
+                for (let x = 0; x < GRID_WIDTH; x++) {
                     if (Math.random() < 0.15) grid.set(`${x},${y}`, 1);
                 }
             }
@@ -701,7 +709,7 @@
             document.getElementById('births').textContent = births;
             document.getElementById('deaths').textContent = deaths;
             document.getElementById('gen').textContent = generation;
-            document.getElementById('density').textContent = (width > 0 && height > 0) ? Math.round(population / (width * height) * 100) + '%' : '0%';
+            document.getElementById('density').textContent = Math.round(population / (GRID_WIDTH * GRID_HEIGHT) * 100) + '%';
         }
 
         function render() {
