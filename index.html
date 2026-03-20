@@ -900,14 +900,24 @@
                 return;
             }
             
-            // Single finger draw
+            // Single finger
             const pos = getTouchPos(e);
+            if (currentTool === 'pan') {
+                isTouchPanning = true;
+                isDrawing = false;
+                touchStartX = pos.x;
+                touchStartY = pos.y;
+                touchStartOffsetX = offsetX;
+                touchStartOffsetY = offsetY;
+                return;
+            }
+
             const cellX = Math.floor((pos.x - offsetX) / (cellSize * zoom));
             const cellY = Math.floor((pos.y - offsetY) / (cellSize * zoom));
             lastX = cellX; lastY = cellY;
             isDrawing = true;
             isTouchPanning = false;
-            
+
             if (currentTool === 'draw') setCell(cellX, cellY, 1);
             else if (currentTool === 'erase') setCell(cellX, cellY, 0);
             updateStats();
@@ -937,8 +947,17 @@
                 return;
             }
             
+            // Single finger pan (tool === 'pan')
+            if (e.touches.length === 1 && isTouchPanning) {
+                const pos = getTouchPos(e);
+                offsetX = touchStartOffsetX + (pos.x - touchStartX);
+                offsetY = touchStartOffsetY + (pos.y - touchStartY);
+                render();
+                return;
+            }
+
             // Single finger draw
-            if (!isDrawing || isTouchPanning) return;
+            if (!isDrawing) return;
             const pos = getTouchPos(e);
             const cellX = Math.floor((pos.x - offsetX) / (cellSize * zoom));
             const cellY = Math.floor((pos.y - offsetY) / (cellSize * zoom));
