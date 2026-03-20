@@ -933,16 +933,20 @@
                 const centerX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
                 const centerY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
                 
-                // Handle zoom
+                // Handle pinch-zoom pivoting around the touch center
                 const dist = getTouchDistance(e);
                 if (touchStartDist > 0) {
-                    zoom = touchStartZoom * (dist / touchStartDist);
-                    zoom = Math.max(0.1, Math.min(5, zoom));
+                    const newZoom = Math.max(0.1, Math.min(5, touchStartZoom * (dist / touchStartDist)));
+                    const scaleFactor = newZoom / touchStartZoom;
+                    zoom = newZoom;
+                    // Keep the world point under the initial pinch center fixed at the current center
+                    offsetX = centerX - (touchStartX - touchStartOffsetX) * scaleFactor;
+                    offsetY = centerY - (touchStartY - touchStartOffsetY) * scaleFactor;
+                } else {
+                    // No zoom data — pure pan
+                    offsetX = touchStartOffsetX + (centerX - touchStartX);
+                    offsetY = touchStartOffsetY + (centerY - touchStartY);
                 }
-                
-                // Handle pan
-                offsetX = touchStartOffsetX + (centerX - touchStartX);
-                offsetY = touchStartOffsetY + (centerY - touchStartY);
                 render();
                 return;
             }
