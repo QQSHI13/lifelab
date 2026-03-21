@@ -10,6 +10,16 @@
 
  gtag('config', 'G-3PSNCFVT76');
 </script>
+<script>
+  // GitHub Pages SPA redirect handler
+  (function() {
+    var redirect = sessionStorage.getItem('gh-spa-redirect');
+    if (redirect) {
+      sessionStorage.removeItem('gh-spa-redirect');
+      history.replaceState(null, null, redirect);
+    }
+  })();
+</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#58a6ff">
