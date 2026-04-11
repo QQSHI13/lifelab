@@ -382,6 +382,128 @@
             return { born, survive, name: 'Custom' };
         }
 
+        // RLE Parser
+        function parseRLE(rleString) {
+            if (!rleString || !rleString.trim()) {
+                return { valid: false, error: 'Enter RLE pattern' };
+            }
+
+            const lines = rleString.trim().split('\n');
+            let header = null;
+            let dataStart = 0;
+
+            // Find header line (starts with x =)
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (line.startsWith('x =') || line.startsWith('x=')) {
+                    header = parseRLEHeader(line);
+                    dataStart = i + 1;
+                    break;
+                }
+            }
+
+            // If no header, try to parse data anyway (minimal format)
+            if (!header) {
+                header = { x: null, y: null, rule: null };
+            }
+
+            // Extract data lines
+            const dataLines = lines.slice(dataStart).join('').replace(/\s/g, '');
+
+            if (!dataLines.includes('!')) {
+                return { valid: false, error: "Missing end marker (!)" };
+            }
+
+            const data = dataLines.split('!')[0];
+
+            try {
+                const cells = parseRLEData(data, header.x, header.y);
+                return {
+                    valid: true,
+                    result: {
+                        width: header.x || Math.max(...cells.map(c => c[0])) + 1,
+                        height: header.y || Math.max(...cells.map(c => c[1])) + 1,
+                        rule: header.rule,
+                        cells: cells
+                    }
+                };
+            } catch (err) {
+                return { valid: false, error: err.message };
+            }
+        }
+
+        function parseRLEHeader(line) {
+            const result = { x: null, y: null, rule: null };
+
+            // Parse x = N
+            const xMatch = line.match(/x\s*=\s*(\d+)/i);
+            if (xMatch) result.x = parseInt(xMatch[1]);
+
+            // Parse y = N
+            const yMatch = line.match(/y\s*=\s*(\d+)/i);
+            if (yMatch) result.y = parseInt(yMatch[1]);
+
+            // Parse rule = B/S
+            const ruleMatch = line.match(/rule\s*=\s*B(\d*)\/S(\d*)/i);
+            if (ruleMatch) {
+                result.rule = `B${ruleMatch[1]}/S${ruleMatch[2]}`;
+            }
+
+            return result;
+        }
+
+        function parseRLEData(data, expectedWidth, expectedHeight) {
+            const cells = [];
+            let x = 0, y = 0;
+            let i = 0;
+
+            while (i < data.length) {
+                // Parse run count
+                let count = 0;
+                while (i < data.length && /\d/.test(data[i])) {
+                    count = count * 10 + parseInt(data[i]);
+                    i++;
+                }
+                if (count === 0) count = 1;
+
+                if (i >= data.length) break;
+
+                const char = data[i];
+
+                if (char === 'b') {
+                    // Dead cells - just advance x
+                    x += count;
+                } else if (char === 'o') {
+                    // Live cells
+                    for (let j = 0; j < count; j++) {
+                        cells.push([x + j, y]);
+                    }
+                    x += count;
+                } else if (char === '$') {
+                    // New row
+                    y += count;
+                    x = 0;
+                } else {
+                    throw new Error(`Invalid character '${char}' at position ${i}`);
+                }
+
+                i++;
+            }
+
+            // Validate dimensions if header provided
+            if (expectedWidth && expectedHeight) {
+                const actualWidth = Math.max(...cells.map(c => c[0]), -1) + 1;
+                const actualHeight = Math.max(...cells.map(c => c[1]), -1) + 1;
+
+                // Allow some tolerance - RLE often has trailing dead cells
+                if (actualWidth > expectedWidth || actualHeight > expectedHeight) {
+                    console.warn(`RLE dimensions mismatch: header ${expectedWidth}x${expectedHeight}, actual ${actualWidth}x${actualHeight}`);
+                }
+            }
+
+            return cells;
+        }
+
         // Fixed grid dimensions for toroidal wrapping (independent of viewport)
         const GRID_WIDTH = 200;
         const GRID_HEIGHT = 150;
