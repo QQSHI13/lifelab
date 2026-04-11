@@ -520,6 +520,9 @@
         let isPanning = false;
         let panStartX, panStartY;
 
+        // Paste cursor mode state
+        let pasteMode = { active: false, pattern: null };
+
         // Init
         function init() {
             canvas = document.getElementById('gridCanvas');
@@ -695,6 +698,65 @@
             });
             updateStats();
             render();
+        }
+
+        function placePatternAt(gridX, gridY, pattern) {
+            saveHistory();
+            futureHistory = [];
+
+            // Calculate offset to center pattern on clicked cell
+            const offsetX = gridX - Math.floor(pattern.width / 2);
+            const offsetY = gridY - Math.floor(pattern.height / 2);
+
+            pattern.cells.forEach(([x, y]) => {
+                const finalX = offsetX + x;
+                const finalY = offsetY + y;
+
+                // Only place if within grid bounds (when not toroidal)
+                if (toroidalMode || (finalX >= 0 && finalX < GRID_WIDTH && finalY >= 0 && finalY < GRID_HEIGHT)) {
+                    // Wrap for toroidal mode
+                    const wrapX = toroidalMode ? ((finalX % GRID_WIDTH) + GRID_WIDTH) % GRID_WIDTH : finalX;
+                    const wrapY = toroidalMode ? ((finalY % GRID_HEIGHT) + GRID_HEIGHT) % GRID_HEIGHT : finalY;
+                    grid.set(`${wrapX},${wrapY}`, 1);
+                }
+            });
+
+            updateStats();
+            render();
+        }
+
+        function enterPasteMode(pattern) {
+            pasteMode = { active: true, pattern: pattern };
+            canvas.style.cursor = 'crosshair';
+        }
+
+        function exitPasteMode() {
+            pasteMode = { active: false, pattern: null };
+            canvas.style.cursor = currentTool === 'pan' ? 'grab' : 'crosshair';
+        }
+
+        function checkAndApplyRule(patternRule) {
+            if (!patternRule) return true;
+
+            const currentRuleKey = Object.keys(RULES).find(k => RULES[k] === rule) || 'B3/S23';
+
+            if (patternRule !== currentRuleKey) {
+                const shouldSwitch = confirm(`This pattern was designed for ${patternRule} rule. Switch to this rule?\n\nCurrent: ${currentRuleKey}\nPattern: ${patternRule}`);
+                if (shouldSwitch) {
+                    const ruleSelect = document.getElementById('rule-select');
+                    // Check if rule exists in dropdown
+                    const exists = Array.from(ruleSelect.options).some(opt => opt.value === patternRule);
+                    if (exists) {
+                        ruleSelect.value = patternRule;
+                        rule = RULES[patternRule];
+                        renderPatterns(document.querySelector('.tab.active').dataset.cat);
+                    } else {
+                        alert(`Rule ${patternRule} is not available in this simulator.`);
+                    }
+                }
+                return true;
+            }
+            return true;
         }
 
         function getCell(x, y) {
