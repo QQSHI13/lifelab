@@ -715,6 +715,7 @@
                 if (patternRules.length === 0 || patternRules.includes(currentRuleKey)) {
                     const btn = document.createElement('button');
                     btn.className = 'pattern-btn';
+                    btn.title = 'Click to center · Shift+click to place';
                     // Show first rule label if not default B3/S23
                     const ruleLabel = patternRules.length > 0 && patternRules[0] !== 'B3/S23' ? ` [${patternRules[0]}${patternRules.length > 1 ? '+' : ''}]` : '';
                     const nameSpan = document.createElement('span');
@@ -725,13 +726,30 @@
                     descSpan.textContent = p.desc;
                     btn.appendChild(nameSpan);
                     btn.appendChild(descSpan);
-                    btn.onclick = () => loadPattern(p);
+                    btn.onclick = (e) => {
+                        if (e.shiftKey) {
+                            loadPattern(p, true); // Paste mode
+                        } else {
+                            loadPattern(p, false); // Center placement
+                        }
+                    };
                     list.appendChild(btn);
                 }
             });
         }
 
-        function loadPattern(pattern) {
+        function loadPattern(pattern, usePasteMode = false) {
+            if (usePasteMode) {
+                // Enter paste cursor mode instead of direct placement
+                enterPasteMode({
+                    width: pattern.width || (pattern.cells ? Math.max(...pattern.cells.map(c => c[0])) + 1 : 0),
+                    height: pattern.height || (pattern.cells ? Math.max(...pattern.cells.map(c => c[1])) + 1 : 0),
+                    cells: pattern.cells
+                });
+                return;
+            }
+
+            // Existing behavior
             saveHistory();
             futureHistory = [];
             const cx = Math.floor(GRID_WIDTH / 2), cy = Math.floor(GRID_HEIGHT / 2);
