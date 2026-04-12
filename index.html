@@ -1072,10 +1072,15 @@
             // Track for paste mode preview
             lastMousePos = { x, y };
 
+            // Re-render preview during paste mode
+            if (pasteMode.active) {
+                render();
+            }
+
             const cellX = Math.floor((x - offsetX) / (cellSize * zoom));
             const cellY = Math.floor((y - offsetY) / (cellSize * zoom));
             document.getElementById('pos').textContent = `${cellX}, ${cellY}`;
-            
+
             if (isPanning) {
                 offsetX = x - panStartX;
                 offsetY = y - panStartY;
