@@ -534,6 +534,7 @@
 
         // Paste cursor mode state
         let pasteMode = { active: false, pattern: null };
+        let lastMousePos = null;
 
         // Init
         function init() {
@@ -645,6 +646,11 @@
                 // 'R' key for random (not when typing in inputs or modal open)
                 if (e.key === 'r' && !e.ctrlKey && !e.metaKey && !inInput && !modalOpen) {
                     randomFill();
+                }
+                // ESC to cancel paste mode
+                if (e.key === 'Escape' && pasteMode.active && !modalOpen) {
+                    e.preventDefault();
+                    exitPasteMode();
                 }
             });
             
@@ -1005,7 +1011,25 @@
                 const py = y * cellH + offsetY;
                 ctx.fillRect(px + 1, py + 1, cellW - 1, cellH - 1);
             });
-            
+
+            // Paste mode preview
+            if (pasteMode.active && pasteMode.pattern) {
+                const mousePos = lastMousePos;
+                if (mousePos) {
+                    const cellX = Math.floor((mousePos.x - offsetX) / (cellSize * zoom));
+                    const cellY = Math.floor((mousePos.y - offsetY) / (cellSize * zoom));
+                    const offsetX_cells = cellX - Math.floor(pasteMode.pattern.width / 2);
+                    const offsetY_cells = cellY - Math.floor(pasteMode.pattern.height / 2);
+
+                    ctx.fillStyle = 'rgba(88, 166, 255, 0.5)';
+                    pasteMode.pattern.cells.forEach(([x, y]) => {
+                        const px = (offsetX_cells + x) * cellW + offsetX;
+                        const py = (offsetY_cells + y) * cellH + offsetY;
+                        ctx.fillRect(px + 1, py + 1, cellW - 1, cellH - 1);
+                    });
+                }
+            }
+
             document.getElementById('zoom-level').textContent = Math.round(zoom * 100) + '%';
             document.getElementById('zoom').textContent = Math.round(zoom * 100) + '%';
         }
@@ -1035,7 +1059,16 @@
             const rect = canvas.getBoundingClientRect();
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
-            
+
+            // Handle paste mode click
+            if (pasteMode.active && e.button === 0) {
+                const cellX = Math.floor((x - offsetX) / (cellSize * zoom));
+                const cellY = Math.floor((y - offsetY) / (cellSize * zoom));
+                placePatternAt(cellX, cellY, pasteMode.pattern);
+                exitPasteMode();
+                return;
+            }
+
             // Pan with middle mouse or space+left click
             if (e.button === 1 || (spacePressed && e.button === 0)) {
                 isPanning = true;
@@ -1069,6 +1102,10 @@
             const rect = canvas.getBoundingClientRect();
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
+
+            // Track for paste mode preview
+            lastMousePos = { x, y };
+
             const cellX = Math.floor((x - offsetX) / (cellSize * zoom));
             const cellY = Math.floor((y - offsetY) / (cellSize * zoom));
             document.getElementById('pos').textContent = `${cellX}, ${cellY}`;
