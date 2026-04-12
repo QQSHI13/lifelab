@@ -187,7 +187,6 @@
                     <div class="stat-box"><div class="stat-value" id="pop">0</div><div class="stat-label">Population</div></div>
                     <div class="stat-box"><div class="stat-value" id="births">0</div><div class="stat-label">Births</div></div>
                     <div class="stat-box"><div class="stat-value" id="deaths">0</div><div class="stat-label">Deaths</div></div>
-                    <div class="stat-box"><div class="stat-value" id="density">0%</div><div class="stat-label">Density</div></div>
                 </div>
             </div>
         </div>
@@ -914,8 +913,15 @@
             saveHistory();
             futureHistory = [];
             grid.clear();
-            for (let y = 0; y < GRID_HEIGHT; y++) {
-                for (let x = 0; x < GRID_WIDTH; x++) {
+            // Fill the visible viewport area
+            const cellW = cellSize * zoom;
+            const cellH = cellSize * zoom;
+            const startX = Math.floor(-offsetX / cellW);
+            const startY = Math.floor(-offsetY / cellH);
+            const endX = startX + Math.ceil(canvas.width / cellW);
+            const endY = startY + Math.ceil(canvas.height / cellH);
+            for (let y = startY; y <= endY; y++) {
+                for (let x = startX; x <= endX; x++) {
                     if (Math.random() < 0.15) grid.set(`${x},${y}`, 1);
                 }
             }
@@ -934,7 +940,6 @@
             document.getElementById('births').textContent = births;
             document.getElementById('deaths').textContent = deaths;
             document.getElementById('gen').textContent = generation;
-            document.getElementById('density').textContent = Math.round(population / (GRID_WIDTH * GRID_HEIGHT) * 100) + '%';
         }
 
         function render() {
