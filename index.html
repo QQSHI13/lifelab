@@ -306,6 +306,18 @@
                         <div class="hint-text">Methuselahs - small patterns that evolve for many generations before stabilizing</div>
                     </div>
                 </div>
+                <div class="modal-section">
+                    <div class="modal-section-title">Import RLE</div>
+                    <div style="margin-bottom: 12px;">
+                        <textarea id="rle-input" placeholder="Paste RLE pattern from LifeWiki...&#10;x = 3, y = 3, rule = B3/S23&#10;bo$2bo$3o!" style="width: 100%; height: 80px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px; color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: 12px; resize: vertical;"></textarea>
+                    </div>
+                    <div id="rle-status" style="font-size: 12px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                        <span style="color: var(--text-secondary);">Enter RLE pattern</span>
+                    </div>
+                    <button class="btn" id="btn-place-rle" disabled style="width: 100%;">
+                        Place Pattern
+                    </button>
+                </div>
             </div>
         </div>
     </div>
