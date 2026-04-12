@@ -252,18 +252,6 @@
                 </div>
 
                 <div class="modal-section">
-                    <div class="modal-section-title">Grid Settings</div>
-                    <div class="hint-item">
-                        <div class="hint-text">
-                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                                <input type="checkbox" id="toroidal-toggle" checked style="cursor: pointer;">
-                                <span>Toroidal mode (wrap edges)</span>
-                            </label>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="modal-section">
                     <div class="modal-section-title">Rule Sets</div>
                     
                     <div class="rule-info">
@@ -572,9 +560,6 @@
             document.getElementById('btn-close-settings').onclick = () => settingsModal.classList.remove('active');
             settingsModal.onclick = (e) => { if (e.target === settingsModal) settingsModal.classList.remove('active'); };
             
-            // Toroidal mode toggle
-            document.getElementById('toroidal-toggle').onchange = (e) => { toroidalMode = e.target.checked; };
-
             // RLE import
             const rleInput = document.getElementById('rle-input');
             const rleStatus = document.getElementById('rle-status');
@@ -715,7 +700,6 @@
                 if (patternRules.length === 0 || patternRules.includes(currentRuleKey)) {
                     const btn = document.createElement('button');
                     btn.className = 'pattern-btn';
-                    btn.title = 'Click to center · Shift+click to place';
                     // Show first rule label if not default B3/S23
                     const ruleLabel = patternRules.length > 0 && patternRules[0] !== 'B3/S23' ? ` [${patternRules[0]}${patternRules.length > 1 ? '+' : ''}]` : '';
                     const nameSpan = document.createElement('span');
@@ -726,38 +710,19 @@
                     descSpan.textContent = p.desc;
                     btn.appendChild(nameSpan);
                     btn.appendChild(descSpan);
-                    btn.onclick = (e) => {
-                        if (e.shiftKey) {
-                            loadPattern(p, true); // Paste mode
-                        } else {
-                            loadPattern(p, false); // Center placement
-                        }
-                    };
+                    btn.onclick = () => loadPattern(p);
                     list.appendChild(btn);
                 }
             });
         }
 
-        function loadPattern(pattern, usePasteMode = false) {
-            if (usePasteMode) {
-                // Enter paste cursor mode instead of direct placement
-                enterPasteMode({
-                    width: pattern.width || (pattern.cells ? Math.max(...pattern.cells.map(c => c[0])) + 1 : 0),
-                    height: pattern.height || (pattern.cells ? Math.max(...pattern.cells.map(c => c[1])) + 1 : 0),
-                    cells: pattern.cells
-                });
-                return;
-            }
-
-            // Existing behavior
-            saveHistory();
-            futureHistory = [];
-            const cx = Math.floor(GRID_WIDTH / 2), cy = Math.floor(GRID_HEIGHT / 2);
-            pattern.cells.forEach(([x, y]) => {
-                grid.set(`${cx + x},${cy + y}`, 1);
+        function loadPattern(pattern) {
+            // Always enter paste cursor mode
+            enterPasteMode({
+                width: pattern.width || (pattern.cells ? Math.max(...pattern.cells.map(c => c[0])) + 1 : 0),
+                height: pattern.height || (pattern.cells ? Math.max(...pattern.cells.map(c => c[1])) + 1 : 0),
+                cells: pattern.cells
             });
-            updateStats();
-            render();
         }
 
         function placePatternAt(gridX, gridY, pattern) {
@@ -772,12 +737,9 @@
                 const finalX = offsetX + x;
                 const finalY = offsetY + y;
 
-                // Only place if within grid bounds (when not toroidal)
-                if (toroidalMode || (finalX >= 0 && finalX < GRID_WIDTH && finalY >= 0 && finalY < GRID_HEIGHT)) {
-                    // Wrap for toroidal mode
-                    const wrapX = toroidalMode ? ((finalX % GRID_WIDTH) + GRID_WIDTH) % GRID_WIDTH : finalX;
-                    const wrapY = toroidalMode ? ((finalY % GRID_HEIGHT) + GRID_HEIGHT) % GRID_HEIGHT : finalY;
-                    grid.set(`${wrapX},${wrapY}`, 1);
+                // Only place if within grid bounds
+                if (finalX >= 0 && finalX < GRID_WIDTH && finalY >= 0 && finalY < GRID_HEIGHT) {
+                    grid.set(`${finalX},${finalY}`, 1);
                 }
             });
 
@@ -847,22 +809,12 @@
             else grid.delete(key);
         }
 
-        // Toroidal (wrap-around) grid support
-        let toroidalMode = true;
-        
         function countNeighbors(x, y) {
             let count = 0;
             for (let dy = -1; dy <= 1; dy++) {
                 for (let dx = -1; dx <= 1; dx++) {
                     if (dx === 0 && dy === 0) continue;
-                    let nx = x + dx;
-                    let ny = y + dy;
-                    if (toroidalMode) {
-                        // Wrap around fixed grid edges
-                        nx = ((nx % GRID_WIDTH) + GRID_WIDTH) % GRID_WIDTH;
-                        ny = ((ny % GRID_HEIGHT) + GRID_HEIGHT) % GRID_HEIGHT;
-                    }
-                    count += getCell(nx, ny);
+                    count += getCell(x + dx, y + dy);
                 }
             }
             return count;
@@ -882,18 +834,14 @@
                 const [x, y] = key.split(',').map(Number);
                 for (let dy = -1; dy <= 1; dy++) {
                     for (let dx = -1; dx <= 1; dx++) {
-                        let cx = x + dx, cy = y + dy;
-                        if (toroidalMode) {
-                            cx = ((cx % GRID_WIDTH) + GRID_WIDTH) % GRID_WIDTH;
-                            cy = ((cy % GRID_HEIGHT) + GRID_HEIGHT) % GRID_HEIGHT;
-                        }
+                        const cx = x + dx, cy = y + dy;
                         const ckey = `${cx},${cy}`;
                         if (checked.has(ckey)) continue;
                         checked.add(ckey);
-                        
+
                         const neighbors = countNeighbors(cx, cy);
                         const alive = getCell(cx, cy);
-                        
+
                         if (alive) {
                             if (rule.survive.includes(neighbors)) newGrid.set(ckey, 1);
                             else deaths++;
