@@ -573,7 +573,31 @@
             
             // Toroidal mode toggle
             document.getElementById('toroidal-toggle').onchange = (e) => { toroidalMode = e.target.checked; };
-            
+
+            // RLE import
+            const rleInput = document.getElementById('rle-input');
+            const rleStatus = document.getElementById('rle-status');
+            const btnPlaceRLE = document.getElementById('btn-place-rle');
+
+            rleInput.addEventListener('input', () => {
+                const result = parseRLE(rleInput.value);
+                updateRLEStatus(result);
+            });
+
+            btnPlaceRLE.addEventListener('click', () => {
+                const result = parseRLE(rleInput.value);
+                if (result.valid) {
+                    // Check rule mismatch
+                    if (result.result.rule) {
+                        checkAndApplyRule(result.result.rule);
+                    }
+                    // Enter paste mode
+                    enterPasteMode(result.result);
+                    // Close modal
+                    settingsModal.classList.remove('active');
+                }
+            });
+
             // Pattern tabs
             document.querySelectorAll('.tab').forEach(tab => {
                 tab.onclick = () => {
@@ -769,6 +793,24 @@
                 return true;
             }
             return true;
+        }
+
+        function updateRLEStatus(parseResult) {
+            const rleStatus = document.getElementById('rle-status');
+            const btnPlaceRLE = document.getElementById('btn-place-rle');
+
+            if (parseResult.valid) {
+                const { width, height, cells, rule } = parseResult.result;
+                const ruleInfo = rule ? ` · ${rule}` : '';
+                rleStatus.innerHTML = `<span style="color: #238636;">●</span><span style="color: var(--text);">Valid RLE · ${width}×${height} · ${cells.length} cells${ruleInfo}</span>`;
+                btnPlaceRLE.disabled = false;
+                btnPlaceRLE.classList.add('primary');
+            } else {
+                const errorColor = parseResult.error === 'Enter RLE pattern' ? 'var(--text-secondary)' : '#da3633';
+                rleStatus.innerHTML = `<span style="color: ${errorColor};">●</span><span style="color: ${errorColor};">${parseResult.error}</span>`;
+                btnPlaceRLE.disabled = true;
+                btnPlaceRLE.classList.remove('primary');
+            }
         }
 
         function getCell(x, y) {
