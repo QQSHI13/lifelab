@@ -734,13 +734,7 @@
             const offsetY = gridY - Math.floor(pattern.height / 2);
 
             pattern.cells.forEach(([x, y]) => {
-                const finalX = offsetX + x;
-                const finalY = offsetY + y;
-
-                // Only place if within grid bounds
-                if (finalX >= 0 && finalX < GRID_WIDTH && finalY >= 0 && finalY < GRID_HEIGHT) {
-                    grid.set(`${finalX},${finalY}`, 1);
-                }
+                grid.set(`${offsetX + x},${offsetY + y}`, 1);
             });
 
             updateStats();
