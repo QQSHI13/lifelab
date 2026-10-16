@@ -106,7 +106,6 @@ See [LICENSE](./LICENSE) for details.
 
 Built with ❤️ by **QQ** and **Nova** ☄️
 
-Powered by [OpenClaw](https://openclaw.ai)
 
 Pattern definitions adapted from LifeWiki and classic CA literature.
 
