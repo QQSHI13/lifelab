@@ -1292,7 +1292,12 @@
                 });
             
             // Auto-refresh when controller changes (new SW activates)
+            // Only auto-reload when an UPDATE replaces a controller this page already had.
+            // On a first visit the new worker claims an uncontrolled page, and reloading
+            // there would cost every first-time visitor a second page load.
+            const swHadController = !!navigator.serviceWorker.controller;
             navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (!swHadController) return;
                 if (!refreshing) {
                     refreshing = true;
                     console.log('[PWA] Controller changed, refreshing...');
