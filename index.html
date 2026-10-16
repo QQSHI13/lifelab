@@ -84,6 +84,69 @@
         .tool-btn { width: 36px; height: 36px; background: var(--surface-hover); border: 1px solid var(--border); color: var(--text); border-radius: 6px; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; }
         .tool-btn:hover { background: var(--border); }
         .tool-btn.active { background: var(--accent); border-color: var(--accent); color: white; }
+        .tb-sep { width: 1px; align-self: stretch; background: var(--border); margin: 4px; }
+
+        .brush-group { display: flex; gap: 2px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 2px; }
+        .brush-btn {
+            width: 26px; height: 26px; border: none; border-radius: 6px; cursor: pointer;
+            background: transparent; color: var(--text-secondary);
+            font-family: 'JetBrains Mono', monospace; font-size: 12px;
+        }
+        .brush-btn:hover { color: var(--text); }
+        .brush-btn.active { background: var(--accent); color: #0d1117; font-weight: 700; }
+
+        .pop-chart { width: 100%; height: 44px; margin-top: 10px; display: block; }
+
+        .toast {
+            position: absolute; left: 50%; bottom: 84px; transform: translate(-50%, 12px);
+            background: rgba(13, 17, 23, 0.95); border: 1px solid var(--border);
+            color: var(--text); padding: 8px 14px; border-radius: 10px;
+            font-size: 13px; opacity: 0; pointer-events: none;
+            transition: opacity .2s ease, transform .2s ease; z-index: 20;
+        }
+        .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+        /* ==========================================================
+           Responsive — the app shell had no media queries at all, so
+           the fixed 260px sidebar left a ~130px canvas on a phone.
+           ========================================================== */
+        @media (max-width: 900px) {
+            /* let the page scroll instead of being a clipped app shell */
+            body { height: auto; min-height: 100vh; overflow: auto; }
+
+            .header { flex-wrap: wrap; justify-content: center; gap: 10px; padding: 10px 12px; }
+            .header .logo { order: 1; }
+            .header .gen-counter { order: 2; }
+            .header .controls { order: 3; width: 100%; justify-content: center; }
+
+            .main { flex-direction: column; overflow: visible; }
+
+            /* canvas first and tall enough to actually draw on */
+            .canvas-container { flex: none; order: 1; height: 58vh; min-height: 320px; }
+
+            .sidebar {
+                order: 2; width: 100%; border-right: none;
+                border-top: 1px solid var(--border);
+            }
+            .sidebar-middle { max-height: 320px; }
+
+            .toolbar {
+                flex-wrap: wrap; justify-content: center;
+                max-width: calc(100% - 16px); bottom: 10px;
+            }
+        }
+
+        @media (max-width: 560px) {
+            /* the speed slider is the first thing to cost more than it gives */
+            .speed-control { display: none; }
+            .tool-btn { width: 32px; height: 32px; font-size: 15px; }
+            .brush-btn { width: 24px; height: 24px; font-size: 11px; }
+            .info-overlay { font-size: 11px; padding: 6px 8px; }
+            .pattern-tabs { flex-wrap: wrap; }
+        }
+
+        .btn.active { background: var(--accent); color: #0d1117; border-color: var(--accent); }
+
         .zoom-display { display: flex; align-items: center; padding: 0 10px; font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-secondary); }
         
         ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -103,9 +166,9 @@
         .tab:hover { background: var(--surface-hover); color: var(--text); }
         .tab.active { background: var(--accent); color: white; }
         
-        .stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; padding: 10px; }
-        .stat-box { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px; text-align: center; }
-        .stat-value { font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 700; color: var(--accent); }
+        .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 10px; }
+        .stat-box { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 8px 6px; text-align: center; min-width: 0; }
+        .stat-value { font-family: 'JetBrains Mono', monospace; font-size: 17px; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
         .stat-label { font-size: 10px; color: var(--text-secondary); text-transform: uppercase; margin-top: 4px; }
         
         /* Settings Modal */
@@ -138,12 +201,16 @@
             <button class="btn btn-icon" id="btn-step-back" title="Step Back">⏮</button>
             <button class="btn primary" id="btn-play"><span id="play-icon">▶</span></button>
             <button class="btn btn-icon" id="btn-step" title="Step">⏭</button>
-            <button class="btn btn-icon" id="btn-random" title="Random">🎲</button>
+            <button class="btn btn-icon" id="btn-random" title="Random (R)">🎲</button>
+            <button class="btn btn-icon" id="btn-png" title="Export PNG (P)">🖼</button>
+            <button class="btn btn-icon" id="btn-rle" title="Copy RLE (Y)">📋</button>
+            <button class="btn btn-icon" id="btn-share" title="Copy share link (U)">🔗</button>
             <div class="speed-control">
                 <span class="speed-label">Speed</span>
                 <input type="range" id="speed" min="1" max="60" value="20">
                 <span id="speed-val">20</span>
             </div>
+            <button class="btn btn-icon" id="btn-turbo" title="Turbo — generations per frame (T)"><span id="turbo-label">1×</span></button>
         </div>
         <div class="gen-counter">Gen: <span id="gen">0</span></div>
     </div>
@@ -182,20 +249,33 @@
                     <div class="stat-box"><div class="stat-value" id="births">0</div><div class="stat-label">Births</div></div>
                     <div class="stat-box"><div class="stat-value" id="deaths">0</div><div class="stat-label">Deaths</div></div>
                 </div>
+                <canvas id="pop-chart" class="pop-chart" width="248" height="44" aria-label="Population over time"></canvas>
             </div>
         </div>
 
         <div class="canvas-container" id="container">
             <canvas id="gridCanvas"></canvas>
-            <div class="info-overlay">Pos: <span id="pos">0, 0</span> | Zoom: <span id="zoom">100%</span></div>
+            <div class="info-overlay">Pos: <span id="pos">0, 0</span> | Zoom: <span id="zoom">100%</span> | Brush: <span id="brush-size">1</span></div>
+            <div class="toast" id="toast" role="status" aria-live="polite"></div>
             <div class="toolbar">
-                <button class="tool-btn active" id="tool-draw" title="Draw">✏️</button>
-                <button class="tool-btn" id="tool-erase" title="Erase">🧼</button>
-                <button class="tool-btn" id="tool-pan" title="Pan">✋</button>
-                <div style="width: 1px; background: var(--border); margin: 4px;"></div>
-                <button class="tool-btn" id="zoom-out">−</button>
+                <button class="tool-btn active" id="tool-draw" title="Draw (D)">✏️</button>
+                <button class="tool-btn" id="tool-erase" title="Erase (E) — or right-drag anywhere">🧼</button>
+                <button class="tool-btn" id="tool-pan" title="Pan (V) — or space-drag">✋</button>
+                <div class="tb-sep"></div>
+                <div class="brush-group" title="Brush size ( [ and ] )">
+                    <button class="brush-btn active" data-brush="1">1</button>
+                    <button class="brush-btn" data-brush="2">2</button>
+                    <button class="brush-btn" data-brush="3">3</button>
+                    <button class="brush-btn" data-brush="5">5</button>
+                </div>
+                <div class="tb-sep"></div>
+                <button class="tool-btn" id="zoom-out" title="Zoom out">−</button>
                 <div class="zoom-display" id="zoom-level">100%</div>
-                <button class="tool-btn" id="zoom-in">+</button>
+                <button class="tool-btn" id="zoom-in" title="Zoom in">+</button>
+                <button class="tool-btn" id="btn-fit" title="Fit pattern (0)">⤢</button>
+                <div class="tb-sep"></div>
+                <button class="tool-btn active" id="btn-grid" title="Toggle grid (G)">▦</button>
+                <button class="tool-btn" id="btn-fullscreen" title="Fullscreen (F)">⛶</button>
             </div>
         </div>
     </div>
@@ -507,6 +587,10 @@
         let isPlaying = false, generation = 0, speed = 20, lastFrame = 0;
         let grid = new Map(), history = [], futureHistory = [], currentTool = 'draw';
         let rule = RULES['B3/S23'];
+        // Upgrade state: brush size (1 = single cell), grid lines, turbo multiplier
+        // (generations per animation frame) and a population history for the chart.
+        let brushSize = 1, showGrid = true, turbo = 1, popHistory = [], lastChartDraw = 0;
+        let patternRotation = 0, patternFlipped = false;
         let population = 0, births = 0, deaths = 0;
         let spacePressed = false;
         let spacePanningOccurred = false;
@@ -655,6 +739,40 @@
                 else canvas.style.cursor = 'crosshair';
             });
             
+            // New controls
+            document.getElementById('btn-png').onclick = exportPNG;
+            document.getElementById('btn-rle').onclick = copyRLE;
+            document.getElementById('btn-share').onclick = shareURL;
+            document.getElementById('btn-fit').onclick = zoomToFit;
+            document.getElementById('btn-grid').onclick = toggleGrid;
+            document.getElementById('btn-fullscreen').onclick = toggleFullscreen;
+            document.getElementById('btn-turbo').onclick = () => setTurbo(turbo >= 64 ? 1 : turbo * 4);
+            document.querySelectorAll('.brush-btn').forEach(b => {
+                b.onclick = () => setBrush(+b.dataset.brush);
+            });
+            canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+            // Extra shortcuts (existing ones: space play/pause, S step, C clear, R random)
+            document.addEventListener('keydown', (e) => {
+                const modalOpen = document.querySelector('.modal-overlay.active') !== null;
+                const inInput = ['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName);
+                if (inInput || modalOpen || e.ctrlKey || e.metaKey) return;
+                switch (e.key) {
+                    case 'g': case 'G': toggleGrid(); break;
+                    case 'f': case 'F': toggleFullscreen(); break;
+                    case '0': zoomToFit(); break;
+                    case 'p': case 'P': exportPNG(); break;
+                    case 'y': case 'Y': copyRLE(); break;
+                    case 'u': case 'U': shareURL(); break;
+                    case 't': case 'T': setTurbo(turbo >= 64 ? 1 : turbo * 4); break;
+                    case 'd': case 'D': setTool('draw'); break;
+                    case 'e': case 'E': setTool('erase'); break;
+                    case 'v': case 'V': setTool('pan'); break;
+                    case '[': setBrush(brushSize - 1); break;
+                    case ']': setBrush(brushSize + 1); break;
+                }
+            });
+
             // Touch support with passive: false for preventDefault
             canvas.addEventListener('touchstart', onTouchStart, {passive: false});
             canvas.addEventListener('touchmove', onTouchMove, {passive: false});
@@ -663,6 +781,7 @@
             loadPatterns();
             render();
             requestAnimationFrame(loop);
+            loadFromHash();
         }
 
         function resize() {
@@ -722,9 +841,19 @@
             saveHistory();
             futureHistory = [];
 
+            // Library patterns loaded from JSON carry only `cells` — no width or
+            // height. Dividing undefined here produced NaN offsets, which collapsed
+            // every cell of the pattern onto the single key "NaN,NaN". Derive the
+            // bounding box when it is missing (loadPattern already did this, so the
+            // bug only bit callers that went straight to placement).
+            const w = pattern.width ||
+                (pattern.cells && pattern.cells.length ? Math.max(...pattern.cells.map(c => c[0])) + 1 : 0);
+            const h = pattern.height ||
+                (pattern.cells && pattern.cells.length ? Math.max(...pattern.cells.map(c => c[1])) + 1 : 0);
+
             // Calculate offset to center pattern on clicked cell
-            const offsetX = gridX - Math.floor(pattern.width / 2);
-            const offsetY = gridY - Math.floor(pattern.height / 2);
+            const offsetX = gridX - Math.floor(w / 2);
+            const offsetY = gridY - Math.floor(h / 2);
 
             pattern.cells.forEach(([x, y]) => {
                 grid.set(`${offsetX + x},${offsetY + y}`, 1);
@@ -807,43 +936,56 @@
             return count;
         }
 
-        function step() {
-            const birthsBefore = births;
-            const deathsBefore = deaths;
-            saveHistory();
-            futureHistory = [];
-            const newGrid = new Map();
-            const checked = new Set();
-            births = 0; deaths = 0;
-            
-            // Check all cells that could change
+        // Core simulation step: no DOM work, so it can be looped for turbo mode.
+        //
+        // The old version visited each live cell and re-tested all 9 cells around
+        // it, guarded by a Set of string keys — the same cell was evaluated up to
+        // nine times per generation. This tallies neighbour counts once per cell
+        // (8 increments per live cell) and then decides every candidate in a
+        // single pass. Same sparse/unbounded grid, same results, far less work.
+        function stepCore() {
+            const counts = new Map();
+
             grid.forEach((_, key) => {
-                const [x, y] = key.split(',').map(Number);
+                const comma = key.indexOf(',');
+                const x = +key.slice(0, comma);
+                const y = +key.slice(comma + 1);
                 for (let dy = -1; dy <= 1; dy++) {
                     for (let dx = -1; dx <= 1; dx++) {
-                        const cx = x + dx, cy = y + dy;
-                        const ckey = `${cx},${cy}`;
-                        if (checked.has(ckey)) continue;
-                        checked.add(ckey);
-
-                        const neighbors = countNeighbors(cx, cy);
-                        const alive = getCell(cx, cy);
-
-                        if (alive) {
-                            if (rule.survive.includes(neighbors)) newGrid.set(ckey, 1);
-                            else deaths++;
-                        } else {
-                            if (rule.born.includes(neighbors)) {
-                                newGrid.set(ckey, 1);
-                                births++;
-                            }
-                        }
+                        if (dx === 0 && dy === 0) continue;
+                        const nk = (x + dx) + ',' + (y + dy);
+                        counts.set(nk, (counts.get(nk) || 0) + 1);
                     }
                 }
             });
-            
+
+            // A live cell with no neighbours is never reached above but must still
+            // be judged (for rules where 0 is a survivor).
+            grid.forEach((_, key) => { if (!counts.has(key)) counts.set(key, 0); });
+
+            const newGrid = new Map();
+            let newBirths = 0, newDeaths = 0;
+
+            counts.forEach((n, key) => {
+                const alive = grid.has(key);
+                if (alive ? rule.survive.includes(n) : rule.born.includes(n)) {
+                    newGrid.set(key, 1);
+                    if (!alive) newBirths++;
+                } else if (alive) {
+                    newDeaths++;
+                }
+            });
+
             grid = newGrid;
+            births = newBirths;
+            deaths = newDeaths;
             generation++;
+        }
+
+        function step() {
+            saveHistory();
+            futureHistory = [];
+            stepCore();
             updateStats();
             render();
         }
@@ -934,6 +1076,52 @@
             document.getElementById('births').textContent = births;
             document.getElementById('deaths').textContent = deaths;
             document.getElementById('gen').textContent = generation;
+
+            popHistory.push(population);
+            if (popHistory.length > 160) popHistory.shift();
+
+            // Sample every generation but repaint at most ~12x/second: redrawing a
+            // canvas per generation cost more than the simulation itself on small
+            // patterns (measured: 2x slower than the original on an acorn).
+            const now = performance.now();
+            if (now - lastChartDraw > 80) {
+                lastChartDraw = now;
+                drawSparkline();
+            }
+        }
+
+        // Population over time — a quick read on whether the universe is growing,
+        // stable or dying out.
+        function drawSparkline() {
+            const c = document.getElementById('pop-chart');
+            if (!c || !c.getContext) return;
+            const w = c.width, h = c.height;
+            const g = c.getContext('2d');
+            g.clearRect(0, 0, w, h);
+            if (popHistory.length < 2) return;
+
+            const max = Math.max(...popHistory, 1);
+            g.beginPath();
+            g.moveTo(0, h);
+            popHistory.forEach((v, i) => {
+                const x = (i / (popHistory.length - 1)) * w;
+                const y = h - (v / max) * (h - 2) - 1;
+                g.lineTo(x, y);
+            });
+            g.lineTo(w, h);
+            g.closePath();
+            g.fillStyle = 'rgba(88, 166, 255, 0.18)';
+            g.fill();
+
+            g.beginPath();
+            popHistory.forEach((v, i) => {
+                const x = (i / (popHistory.length - 1)) * w;
+                const y = h - (v / max) * (h - 2) - 1;
+                i ? g.lineTo(x, y) : g.moveTo(x, y);
+            });
+            g.strokeStyle = '#58a6ff';
+            g.lineWidth = 1.5;
+            g.stroke();
         }
 
         function render() {
@@ -947,29 +1135,39 @@
             const endX = startX + Math.ceil(canvas.width / cellW) + 1;
             const endY = startY + Math.ceil(canvas.height / cellH) + 1;
             
-            // Grid lines
-            ctx.strokeStyle = '#21262d';
-            ctx.lineWidth = 0.5;
-            ctx.beginPath();
-            for (let x = startX; x <= endX; x++) {
-                const px = x * cellW + offsetX;
-                ctx.moveTo(px, 0); ctx.lineTo(px, canvas.height);
+            // Grid lines — skipped when they would be visual noise / costly
+            if (showGrid && cellW >= 4) {
+                ctx.strokeStyle = '#21262d';
+                ctx.lineWidth = 0.5;
+                ctx.beginPath();
+                for (let x = startX; x <= endX; x++) {
+                    const px = Math.round(x * cellW + offsetX) + 0.5;
+                    ctx.moveTo(px, 0); ctx.lineTo(px, canvas.height);
+                }
+                for (let y = startY; y <= endY; y++) {
+                    const py = Math.round(y * cellH + offsetY) + 0.5;
+                    ctx.moveTo(0, py); ctx.lineTo(canvas.width, py);
+                }
+                ctx.stroke();
             }
-            for (let y = startY; y <= endY; y++) {
-                const py = y * cellH + offsetY;
-                ctx.moveTo(0, py); ctx.lineTo(canvas.width, py);
-            }
-            ctx.stroke();
             
-            // Cells
+            // Cells — accumulated into a single path so the GPU gets one fill call
+            // instead of one per living cell (the old code issued N fillRects).
+            const inset = cellW > 3 ? 1 : 0;
             ctx.fillStyle = '#58a6ff';
+            ctx.beginPath();
             grid.forEach((_, key) => {
-                const [x, y] = key.split(',').map(Number);
-                if (x < startX || x > endX || y < startY || y > endY) return;
-                const px = x * cellW + offsetX;
-                const py = y * cellH + offsetY;
-                ctx.fillRect(px + 1, py + 1, cellW - 1, cellH - 1);
+                const comma = key.indexOf(',');
+                const x = +key.slice(0, comma);
+                if (x < startX || x > endX) return;
+                const y = +key.slice(comma + 1);
+                if (y < startY || y > endY) return;
+                ctx.rect(x * cellW + offsetX + inset,
+                         y * cellH + offsetY + inset,
+                         Math.max(cellW - inset * 2, 0.5),
+                         Math.max(cellH - inset * 2, 0.5));
             });
+            ctx.fill();
 
             // Paste mode preview
             if (pasteMode.active && pasteMode.pattern) {
@@ -1005,9 +1203,17 @@
         
         function loop(timestamp) {
             if (isPlaying && !reducedMotion && timestamp - lastFrame > 1000 / speed) {
-                step();
+                // turbo -> several generations per frame, with a single redraw
+                for (let i = 0; i < turbo; i++) {
+                    saveHistory();
+                    futureHistory = [];
+                    stepCore();
+                }
+                updateStats();
+                render();
                 lastFrame = timestamp;
             }
+            if (!isPlaying && lastChartDraw !== -1) { lastChartDraw = -1; drawSparkline(); }
             requestAnimationFrame(loop);
         }
 
@@ -1029,6 +1235,17 @@
             }
 
             // Pan with middle mouse or space+left click
+            if (e.button === 2) {
+                // right-drag erases without switching tools
+                isDrawing = true;
+                lastX = Math.floor((x - offsetX) / (cellSize * zoom));
+                lastY = Math.floor((y - offsetY) / (cellSize * zoom));
+                stamp(lastX, lastY, 0);
+                updateStats();
+                render();
+                return;
+            }
+
             if (e.button === 1 || (spacePressed && e.button === 0)) {
                 isPanning = true;
                 if (spacePressed) spacePanningOccurred = true;
@@ -1050,8 +1267,7 @@
                 const cellY = Math.floor((y - offsetY) / (cellSize * zoom));
                 lastX = cellX; lastY = cellY;
                 
-                if (currentTool === 'draw') setCell(cellX, cellY, 1);
-                else if (currentTool === 'erase') setCell(cellX, cellY, 0);
+                stamp(cellX, cellY, currentTool === 'erase' ? 0 : 1);
                 updateStats();
                 render();
             }
@@ -1083,8 +1299,7 @@
                 offsetY = y - dragStartY;
                 render();
             } else if (isDrawing && (cellX !== lastX || cellY !== lastY)) {
-                if (currentTool === 'draw') drawLine(lastX, lastY, cellX, cellY, 1);
-                else if (currentTool === 'erase') drawLine(lastX, lastY, cellX, cellY, 0);
+                drawLine(lastX, lastY, cellX, cellY, paintValueFor(e));
                 lastX = cellX; lastY = cellY;
                 updateStats();
                 render();
@@ -1101,13 +1316,36 @@
 
         function onWheel(e) {
             e.preventDefault();
-            const delta = e.deltaY > 0 ? 0.9 : 1.1;
-            zoom *= delta;
-            zoom = Math.max(0.1, Math.min(5, zoom));
+            // Zoom about the pointer: keep the world position under the cursor
+            // fixed, otherwise zooming drifts the pattern off-screen.
+            const rect = canvas.getBoundingClientRect();
+            const mx = e.clientX - rect.left;
+            const my = e.clientY - rect.top;
+            const wx = (mx - offsetX) / zoom;
+            const wy = (my - offsetY) / zoom;
+
+            // exponential so mouse wheels and trackpads both feel linear
+            const factor = Math.exp(-e.deltaY * 0.0015);
+            zoom = Math.max(0.02, Math.min(12, zoom * factor));
+
+            offsetX = mx - wx * zoom;
+            offsetY = my - wy * zoom;
             render();
         }
         
-        // Line drawing to fill gaps when moving fast
+        // Paint one brush stamp centred on a cell (radius = brushSize - 1 discs)
+        function stamp(cx, cy, value) {
+            if (brushSize <= 1) { setCell(cx, cy, value); return; }
+            const r = brushSize - 1;
+            const r2 = r * r + r * 0.4;
+            for (let dy = -r; dy <= r; dy++) {
+                for (let dx = -r; dx <= r; dx++) {
+                    if (dx * dx + dy * dy <= r2) setCell(cx + dx, cy + dy, value);
+                }
+            }
+        }
+
+        // Line drawing to fill gaps when moving fast (Bresenham, brush-aware)
         function drawLine(x0, y0, x1, y1, value) {
             const dx = Math.abs(x1 - x0), dy = Math.abs(y1 - y0);
             const sx = x0 < x1 ? 1 : -1;
@@ -1115,13 +1353,248 @@
             let err = dx - dy;
             
             while (true) {
-                setCell(x0, y0, value);
+                stamp(x0, y0, value);
                 if (x0 === x1 && y0 === y1) break;
                 const e2 = 2 * err;
                 if (e2 > -dy) { err -= dy; x0 += sx; }
                 if (e2 < dx) { err += dx; y0 += sy; }
             }
         }
+
+        // Right mouse button erases regardless of the active tool
+        function paintValueFor(e) {
+            if (e && (e.button === 2 || e.buttons === 2)) return 0;
+            return currentTool === 'erase' ? 0 : 1;
+        }
+
+        function toggleGrid() {
+            showGrid = !showGrid;
+            const b = document.getElementById('btn-grid');
+            if (b) b.classList.toggle('active', showGrid);
+            render();
+        }
+
+        // ---------- RLE in / out, snapshots, sharing ----------
+        function ruleKey() {
+            const found = Object.keys(RULES).find(k => RULES[k] === rule);
+            if (found) return found;
+            return 'B' + rule.born.join('') + '/S' + rule.survive.join('');
+        }
+
+        function patternBounds() {
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            grid.forEach((_, key) => {
+                const comma = key.indexOf(',');
+                const x = +key.slice(0, comma);
+                const y = +key.slice(comma + 1);
+                if (x < minX) minX = x;
+                if (x > maxX) maxX = x;
+                if (y < minY) minY = y;
+                if (y > maxY) maxY = y;
+            });
+            return Number.isFinite(minX) ? { minX, minY, maxX, maxY } : null;
+        }
+
+        function encodeRLE() {
+            const b = patternBounds();
+            if (!b) return 'x = 0, y = 0, rule = ' + ruleKey() + '\n!';
+            const w = b.maxX - b.minX + 1;
+            const h = b.maxY - b.minY + 1;
+            const rows = [];
+
+            for (let y = b.minY; y <= b.maxY; y++) {
+                // Collect (count, tag) runs, drop trailing dead runs whole, then
+                // serialise. Stripping only the trailing "b" characters would
+                // leave the run count behind: an all-dead row became "13b" ->
+                // "13", which then fused with the next '$' into "13$" and made
+                // the parser skip thirteen rows.
+                const parts = [];
+                for (let x = b.minX; x <= b.maxX; x++) {
+                    const tag = grid.has(x + ',' + y) ? 'o' : 'b';
+                    const last = parts[parts.length - 1];
+                    if (last && last.tag === tag) last.count++;
+                    else parts.push({ count: 1, tag });
+                }
+                while (parts.length && parts[parts.length - 1].tag === 'b') parts.pop();
+
+                const row = parts.map(p => (p.count > 1 ? p.count : '') + p.tag).join('');
+                rows.push(row || 'b');
+            }
+
+            let body = rows.join('$') + '!';
+            const lines = [];
+            while (body.length > 70) {
+                let cut = body.lastIndexOf('$', 70);
+                if (cut <= 0) cut = 70;
+                lines.push(body.slice(0, cut + 1));
+                body = body.slice(cut + 1);
+            }
+            lines.push(body);
+            return `x = ${w}, y = ${h}, rule = ${ruleKey()}\n` + lines.join('\n');
+        }
+
+        function flash(msg) {
+            const el = document.getElementById('toast');
+            if (!el) return;
+            el.textContent = msg;
+            el.classList.add('show');
+            clearTimeout(flash._t);
+            flash._t = setTimeout(() => el.classList.remove('show'), 1600);
+        }
+
+        // Export the living pattern (not the viewport) so the file is reusable.
+        function exportPNG() {
+            const b = patternBounds();
+            if (!b) { flash('Nothing to export'); return; }
+            const pad = 2;
+            const w = b.maxX - b.minX + 1 + pad * 2;
+            const h = b.maxY - b.minY + 1 + pad * 2;
+            const cell = Math.max(1, Math.min(16, Math.floor(2048 / Math.max(w, h))));
+            const c = document.createElement('canvas');
+            c.width = w * cell;
+            c.height = h * cell;
+            const g = c.getContext('2d');
+            g.fillStyle = '#0d1117';
+            g.fillRect(0, 0, c.width, c.height);
+            g.fillStyle = '#58a6ff';
+            grid.forEach((_, key) => {
+                const comma = key.indexOf(',');
+                const x = +key.slice(0, comma) - (b.minX - pad);
+                const y = +key.slice(comma + 1) - (b.minY - pad);
+                g.fillRect(x * cell, y * cell, cell, cell);
+            });
+            c.toBlob(blob => {
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = `lifelab-gen${generation}.png`;
+                a.click();
+                setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+                flash('PNG exported');
+            });
+        }
+
+        function copyRLE() {
+            const text = encodeRLE();
+            navigator.clipboard.writeText(text)
+                .then(() => flash('RLE copied to clipboard'))
+                .catch(() => window.prompt('Copy RLE:', text));
+        }
+
+        function shareURL() {
+            const url = location.origin + location.pathname + '#rle=' + encodeURIComponent(encodeRLE());
+            // NB: `history` is the undo stack here, not window.history
+            window.history.replaceState(null, '', '#rle=' + encodeURIComponent(encodeRLE()));
+            navigator.clipboard.writeText(url)
+                .then(() => flash('Share link copied'))
+                .catch(() => window.prompt('Copy link:', url));
+        }
+
+        function loadFromHash() {
+            const m = location.hash.match(/rle=([^&]+)/);
+            if (!m) return false;
+            const text = decodeURIComponent(m[1]);
+            const parsed = parseRLE(text);
+            const result = parsed && parsed.valid ? parsed.result : null;
+            if (!result || !result.cells || !result.cells.length) return false;
+            clear();
+            const cx = Math.floor(canvas.width / (cellSize * zoom) / 2);
+            const cy = Math.floor(canvas.height / (cellSize * zoom) / 2);
+            placePatternAt(cx, cy, result);
+            if (result.rule && result.rule !== ruleKey()) {
+                const sel = document.getElementById('rule-select');
+                if (sel) {
+                    const key = String(result.rule).replace(/\s/g, '');
+                    if (RULES[key]) { sel.value = key; rule = RULES[key]; }
+                }
+            }
+            updateStats();
+            render();
+            flash('Pattern loaded from link');
+            return true;
+        }
+
+        // Fit the current pattern in view
+        function zoomToFit() {
+            const b = patternBounds();
+            if (!b) { zoom = 1; offsetX = 0; offsetY = 0; render(); return; }
+            const w = b.maxX - b.minX + 1;
+            const h = b.maxY - b.minY + 1;
+            const pad = 0.85;
+            zoom = Math.max(0.02, Math.min(12, Math.min(canvas.width / (w * cellSize), canvas.height / (h * cellSize)) * pad));
+            offsetX = canvas.width / 2 - ((b.minX + w / 2) * cellSize * zoom);
+            offsetY = canvas.height / 2 - ((b.minY + h / 2) * cellSize * zoom);
+            render();
+        }
+
+        function toggleFullscreen() {
+            const el = document.getElementById('container');
+            if (!document.fullscreenElement) {
+                (el.requestFullscreen || el.webkitRequestFullscreen || (() => {})).call(el);
+            } else {
+                (document.exitFullscreen || document.webkitExitFullscreen || (() => {})).call(document);
+            }
+        }
+
+        function setBrush(n) {
+            brushSize = Math.max(1, Math.min(9, n | 0));
+            document.querySelectorAll('.brush-btn').forEach(b => {
+                b.classList.toggle('active', +b.dataset.brush === brushSize);
+            });
+            const c = document.getElementById('brush-size');
+            if (c) c.textContent = brushSize;
+        }
+
+        function setTurbo(n) {
+            turbo = Math.max(1, Math.min(64, n | 0));
+            const btn = document.getElementById('btn-turbo');
+            if (btn) btn.classList.toggle('active', turbo > 1);
+            const label = document.getElementById('turbo-label');
+            if (label) label.textContent = turbo + '×';
+        }
+
+        // ---------- test / embedding API ----------
+        window.LifeLab = {
+            version: 1,
+            clear() { clear(); generation = 0; births = 0; deaths = 0; popHistory = []; updateStats(); render(); },
+            setCell, getCell,
+            placeCells(cells) { (cells || []).forEach(([x, y]) => setCell(x, y, 1)); updateStats(); render(); },
+            place(name) {
+                const all = Object.values(PATTERNS).flat();
+                const pat = all.find(p => p && p.name && p.name.toLowerCase() === String(name).toLowerCase());
+                if (!pat) return false;
+                placePatternAt(Math.floor(canvas.width / (cellSize * zoom) / 2),
+                               Math.floor(canvas.height / (cellSize * zoom) / 2), pat);
+                updateStats(); render();
+                return true;
+            },
+            patterns: () => Object.values(PATTERNS).flat().map(p => p.name),
+            population: () => grid.size,
+            generation: () => generation,
+            bounds: patternBounds,
+            cells: () => Array.from(grid.keys()).map(k => {
+                const c = k.indexOf(',');
+                return [+k.slice(0, c), +k.slice(c + 1)];
+            }),
+            step: () => step(),
+            stepN(n) { for (let i = 0; i < n; i++) stepCore(); updateStats(); render(); },
+            setRule(key) { if (RULES[key]) { rule = RULES[key]; const sel = document.getElementById('rule-select'); if (sel) sel.value = key; } },
+            rule: () => ruleKey(),
+            encodeRLE, exportPNG, copyRLE, shareURL, zoomToFit, toggleGrid, toggleFullscreen,
+            setBrush, setTurbo, brush: () => brushSize, turbo: () => turbo,
+            loadRLE(text) {
+                const parsed = parseRLE(text);
+                const result = parsed && parsed.valid ? parsed.result : null;
+                if (!result || !result.cells || !result.cells.length) return false;
+                clear();
+                placePatternAt(Math.floor(canvas.width / (cellSize * zoom) / 2),
+                               Math.floor(canvas.height / (cellSize * zoom) / 2), result);
+                updateStats(); render();
+                return true;
+            },
+            view: () => ({ zoom, offsetX, offsetY }),
+            setView(z, ox, oy) { if (z) zoom = z; if (ox !== undefined) offsetX = ox; if (oy !== undefined) offsetY = oy; render(); },
+            togglePlay,
+        };
         
         // Touch event handlers with panning support
         let touchStartDist = 0;
@@ -1180,8 +1653,7 @@
             isDrawing = true;
             isTouchPanning = false;
 
-            if (currentTool === 'draw') setCell(cellX, cellY, 1);
-            else if (currentTool === 'erase') setCell(cellX, cellY, 0);
+            stamp(cellX, cellY, currentTool === 'erase' ? 0 : 1);
             updateStats();
             render();
         }
