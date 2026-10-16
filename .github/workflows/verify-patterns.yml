@@ -1,0 +1,21 @@
+name: Verify patterns
+
+# The pattern library is data, and data rots: a wrong cell or a mislabelled
+# description is invisible until someone runs it. Every pattern declares the
+# behaviour it should have (`expect`) and this job simulates it to check.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - name: Verify every pattern against its declared behaviour
+        run: node tools/verify-patterns.mjs

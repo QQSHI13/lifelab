@@ -2,34 +2,32 @@
   "category": "seeds",
   "patterns": [
     {
-      "name": "Simple Exploder",
-      "desc": "Expands outward rapidly",
-      "cells": [[0,0],[1,0],[2,0]],
-      "rule": "B2/S"
+      "name": "Seeds Exploder",
+      "desc": "Three cells — explodes into unbounded growth",
+      "cells": [[0,0],[1,0],[0,1]],
+      "rule": "B2/S",
+      "expect": {"kind": "growth"}
     },
     {
-      "name": "Diamond",
-      "desc": "Creates diamond pattern",
-      "cells": [[1,0],[0,1],[1,1],[2,1],[1,2]],
-      "rule": "B2/S"
+      "name": "Seeds Domino",
+      "desc": "Two cells — 8 cells remain: two 4-cell ships fly apart",
+      "cells": [[0,0],[1,0]],
+      "rule": "B2/S",
+      "expect": {"kind": "stable", "pop": 8, "genMin": 50}
     },
     {
-      "name": "Double Line",
-      "desc": "Two lines expanding",
-      "cells": [[0,0],[1,0],[0,2],[1,2]],
-      "rule": "B2/S"
+      "name": "Seeds Spaceship",
+      "desc": "Four cells — c/1 spaceship, climbs one cell per generation",
+      "cells": [[1,0],[2,0],[0,2],[3,2]],
+      "rule": "B2/S",
+      "expect": {"kind": "spaceship", "period": 1, "dx": 0, "dy": -1}
     },
     {
-      "name": "Checkerboard",
-      "desc": "Creates checkerboard growth",
-      "cells": [[0,0],[1,1],[2,2],[3,3]],
-      "rule": "B2/S"
-    },
-    {
-      "name": "X Pattern",
-      "desc": "Diagonal expansion",
-      "cells": [[0,0],[2,0],[1,1],[0,2],[2,2]],
-      "rule": "B2/S"
+      "name": "Seeds Diagonal Pair",
+      "desc": "Two cells on a diagonal — period-2 oscillator",
+      "cells": [[0,0],[1,1]],
+      "rule": "B2/S",
+      "expect": {"kind": "oscillator", "period": 2}
     }
   ]
 }

@@ -21,7 +21,7 @@ Conway's Game of Life — an advanced cellular automaton simulator with a compre
 - **Seeds** — B2/S (explosive growth)
 - **Day & Night** — B3678/S34678 (symmetric rules)
 
-### Pattern Library (30+ Patterns)
+### Pattern Library (25 Patterns)
 
 #### Guns
 - **Gosper Glider Gun** — Period 30 glider gun
