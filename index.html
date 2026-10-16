@@ -44,14 +44,14 @@
         .logo { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 700; color: var(--accent); }
         .logo-icon { width: 32px; height: 32px; background: linear-gradient(135deg, var(--accent), var(--success)); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
         
-        .controls { display: flex; align-items: center; gap: 8px; }
+        .controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
         .btn { padding: 6px 14px; background: var(--surface-hover); border: 1px solid var(--border); color: var(--text); border-radius: 6px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 6px; transition: all 0.15s; }
         .btn:hover { background: var(--border); }
         .btn.primary { background: var(--success); border-color: var(--success); color: white; }
         .btn-icon { width: 32px; height: 32px; padding: 0; justify-content: center; }
         
-        .speed-control { display: flex; align-items: center; gap: 8px; padding: 0 12px; border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
-        .speed-control input { width: 100px; accent-color: var(--accent); }
+        .speed-control { display: flex; align-items: center; gap: 8px; padding: 0 12px; border-left: 1px solid var(--border); border-right: 1px solid var(--border); flex-wrap: wrap; min-width: 0; }
+        .speed-control input { width: 100px; max-width: 100%; accent-color: var(--accent); }
         .speed-label { font-size: 12px; color: var(--text-secondary); }
         .gen-counter { font-family: 'JetBrains Mono', monospace; font-size: 16px; color: var(--accent); font-weight: 700; }
         
