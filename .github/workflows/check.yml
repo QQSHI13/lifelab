@@ -1,0 +1,32 @@
+name: Check
+
+# The simulation core (js/bitboard.js), the app that uses it, and the pattern
+# library all have to agree on the stepping semantics. Each of the three jobs
+# below is a plain `node` script — no browser, no Playwright, no dependencies.
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Simulation core correctness (js/bitboard.js)
+        run: node js/bitboard.check.mjs
+
+      - name: App end-to-end checks (stub DOM, no browser)
+        run: node js/app.check.mjs
+
+      # Patterns are data, and this is the reference stepper they are verified
+      # against — it must stay green alongside the bitboard.
+      - name: Pattern library verifier
+        run: node tools/verify-patterns.mjs

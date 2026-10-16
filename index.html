@@ -383,6 +383,9 @@
         </div>
     </div>
 
+    <!-- Simulation core. A plain classic script (no modules, no build step) so it
+         is loaded before the app's inline script defines the state that uses it. -->
+    <script src="js/bitboard.js"></script>
     <script>
         // Pattern Library - Loaded from JSON files with fallback
         let PATTERNS = {};
@@ -584,13 +587,28 @@
         let canvas, ctx, width, height, cellSize = 10, zoom = 1;
         let offsetX = 0, offsetY = 0, isDragging = false, dragStartX, dragStartY;
         let isPlaying = false, generation = 0, speed = 20, lastFrame = 0;
-        let grid = new Map(), history = [], futureHistory = [], currentTool = 'draw';
         let rule = RULES['B3/S23'];
+        // The simulation core: a chunked bitboard (js/bitboard.js). There is only
+        // one core — the old Map<"x,y", 1> grid, its stepCore() and its per-cell
+        // "x,y" parsing are gone (see docs/PERF.md §7.1 for the measurements).
+        let universe = new BitboardUniverse(ruleKey());
+        // Undo/redo stacks. Each entry is a `universe.clone()` snapshot (one
+        // Uint32Array(32) per occupied chunk), not a copy of every live cell.
+        let history = [], futureHistory = [], currentTool = 'draw';
         // Upgrade state: brush size (1 = single cell), grid lines, turbo multiplier
         // (generations per animation frame) and a population history for the chart.
         let brushSize = 1, showGrid = true, turbo = 1, popHistory = [], lastChartDraw = 0;
         let patternRotation = 0, patternFlipped = false;
         let population = 0, births = 0, deaths = 0;
+        // Which cell renderer `render()` used last: 'runs' (batched canvas path,
+        // one rect per run of set bits, cells >= 3px) or 'imagedata' (one write per
+        // visible cell into a persistent ImageData, cells < 3px). Read by
+        // js/app.check.mjs; not used by the app itself.
+        let lastRenderPath = 'runs';
+        let cellImage = null, cellPixels = null;
+        // ImageData colours, packed little-endian as 0xAABBGGRR.
+        const BG_PIXEL = 0xff17110d;     // #0d1117 background
+        const CELL_PIXEL = 0xffffa658;   // #58a6ff live cell
         let spacePressed = false;
         let spacePanningOccurred = false;
         let isPanning = false;
@@ -616,8 +634,9 @@
             document.getElementById('speed').oninput = (e) => { speed = parseInt(e.target.value); document.getElementById('speed-val').textContent = speed; };
             document.getElementById('rule-select').onchange = (e) => { 
                 const selected = e.target.value;
-                rule = RULES[selected] || parseRule(selected);
-                console.log('Rule changed:', rule);
+                if (applyRule(RULES[selected] || parseRule(selected))) {
+                    console.log('Rule changed:', rule);
+                }
                 // Refresh patterns to show rule-specific ones
                 const activeTab = document.querySelector('.tab.active');
                 if (activeTab) renderPatterns(activeTab.dataset.cat);
@@ -855,7 +874,7 @@
             const offsetY = gridY - Math.floor(h / 2);
 
             pattern.cells.forEach(([x, y]) => {
-                grid.set(`${offsetX + x},${offsetY + y}`, 1);
+                setCell(offsetX + x, offsetY + y, true);
             });
 
             updateStats();
@@ -885,7 +904,7 @@
                     const exists = Array.from(ruleSelect.options).some(opt => opt.value === patternRule);
                     if (exists) {
                         ruleSelect.value = patternRule;
-                        rule = RULES[patternRule];
+                        applyRule(RULES[patternRule]);
                         renderPatterns(document.querySelector('.tab.active').dataset.cat);
                     } else {
                         alert(`Rule ${patternRule} is not available in this simulator.`);
@@ -914,14 +933,25 @@
             }
         }
 
+        // ---------- simulation core (js/bitboard.js) ----------
+        //
+        // Everything below is a thin wrapper over BitboardUniverse. The old
+        // `grid` Map, its "x,y" string keys, getCell()'s `grid.has` and the whole
+        // of stepCore() are gone: the bitboard steps 32x32 chunks bit-parallel and
+        // keeps the population/birth/death counters itself.
+
         function getCell(x, y) {
-            return grid.has(`${x},${y}`) ? 1 : 0;
+            return universe.get(x, y) ? 1 : 0;
         }
 
         function setCell(x, y, alive) {
-            const key = `${x},${y}`;
-            if (alive) grid.set(key, 1);
-            else grid.delete(key);
+            try {
+                universe.set(x, y, !!alive);
+            } catch (err) {
+                // Only reachable by panning outside the bitboard's key space
+                // (+/-16.7M cells per axis — essentially the end of the world).
+                // Ignore the cell rather than warp it to the edge.
+            }
         }
 
         function countNeighbors(x, y) {
@@ -935,84 +965,36 @@
             return count;
         }
 
-        // Core simulation step: no DOM work, so it can be looped for turbo mode.
-        //
-        // The old version visited each live cell and re-tested all 9 cells around
-        // it, guarded by a Set of string keys — the same cell was evaluated up to
-        // nine times per generation. This tallies neighbour counts once per cell
-        // (8 increments per live cell) and then decides every candidate in a
-        // single pass. Same sparse/unbounded grid, same results, far less work.
-        function stepCore() {
-            const counts = new Map();
-
-            grid.forEach((_, key) => {
-                const comma = key.indexOf(',');
-                const x = +key.slice(0, comma);
-                const y = +key.slice(comma + 1);
-                for (let dy = -1; dy <= 1; dy++) {
-                    for (let dx = -1; dx <= 1; dx++) {
-                        if (dx === 0 && dy === 0) continue;
-                        const nk = (x + dx) + ',' + (y + dy);
-                        counts.set(nk, (counts.get(nk) || 0) + 1);
-                    }
-                }
-            });
-
-            // A live cell with no neighbours is never reached above but must still
-            // be judged (for rules where 0 is a survivor).
-            grid.forEach((_, key) => { if (!counts.has(key)) counts.set(key, 0); });
-
-            const newGrid = new Map();
-            let newBirths = 0, newDeaths = 0;
-
-            counts.forEach((n, key) => {
-                const alive = grid.has(key);
-                if (alive ? rule.survive.includes(n) : rule.born.includes(n)) {
-                    newGrid.set(key, 1);
-                    if (!alive) newBirths++;
-                } else if (alive) {
-                    newDeaths++;
-                }
-            });
-
-            grid = newGrid;
-            births = newBirths;
-            deaths = newDeaths;
-            generation++;
-        }
-
+        // One generation. No DOM work here, so turbo mode can loop it.
         function step() {
             saveHistory();
             futureHistory = [];
-            stepCore();
+            universe.stepOnce();
+            generation = universe.generation;
             updateStats();
             render();
         }
 
+        // History snapshots are bitboard clones. A snapshot costs ~128 B per
+        // *occupied* chunk (~13 KB for a 100k-cell soup, ~130 KB at 1M) and is a
+        // handful of memcpys, where the old `new Map(grid)` deep-copied every
+        // string key: 10-14 ms per generation at 100k cells, i.e. the app's next
+        // bottleneck once the stepper was ~1 ms (docs/PERF.md §4.2b). Cloning is
+        // also the only approach that needs no change at the ~8 places that edit
+        // the universe (brush, line, random fill, RLE load, pattern paste), so it
+        // cannot drift out of sync with the mutations.
         function saveHistory() {
             if (history.length > 50) history.shift();
-            history.push({
-                grid: new Map(grid),
-                generation: generation,
-                births: births,
-                deaths: deaths
-            });
+            history.push(universe.clone());
         }
 
         function stepBack() {
             if (history.length === 0) return;
             const state = history.pop();
-            futureHistory.push({
-                grid: new Map(grid),
-                generation: generation,
-                births: births,
-                deaths: deaths
-            });
+            futureHistory.push(universe.clone());
             if (futureHistory.length > 50) futureHistory.shift();
-            grid = state.grid;
-            generation = state.generation;
-            births = state.births;
-            deaths = state.deaths;
+            universe = state;
+            generation = universe.generation;
             updateStats();
             render();
         }
@@ -1020,17 +1002,10 @@
         function stepForward() {
             if (futureHistory.length === 0) return;
             const state = futureHistory.pop();
-            history.push({
-                grid: new Map(grid),
-                generation: generation,
-                births: births,
-                deaths: deaths
-            });
+            history.push(universe.clone());
             if (history.length > 50) history.shift();
-            grid = state.grid;
-            generation = state.generation;
-            births = state.births;
-            deaths = state.deaths;
+            universe = state;
+            generation = universe.generation;
             updateStats();
             render();
         }
@@ -1038,7 +1013,7 @@
         function clear() {
             saveHistory();
             futureHistory = [];
-            grid.clear();
+            universe.clear();
             generation = 0;
             updateStats();
             render();
@@ -1047,7 +1022,11 @@
         function randomFill() {
             saveHistory();
             futureHistory = [];
-            grid.clear();
+            // Random fill replaces the contents but never reset the generation
+            // counter, so preserve it across the clear.
+            const keepGeneration = universe.generation;
+            universe.clear();
+            universe.generation = keepGeneration;
             // Fill the visible viewport area
             const cellW = cellSize * zoom;
             const cellH = cellSize * zoom;
@@ -1057,7 +1036,7 @@
             const endY = startY + Math.ceil(canvas.height / cellH);
             for (let y = startY; y <= endY; y++) {
                 for (let x = startX; x <= endX; x++) {
-                    if (Math.random() < 0.15) grid.set(`${x},${y}`, 1);
+                    if (Math.random() < 0.15) setCell(x, y, true);
                 }
             }
             updateStats();
@@ -1070,7 +1049,12 @@
         }
 
         function updateStats() {
-            population = grid.size;
+            // The bitboard owns these counters: `population` is maintained by
+            // set()/clear(), `births`/`deaths` by stepOnce(). Mirror them for the
+            // panel and the sparkline.
+            population = universe.population;
+            births = universe.births;
+            deaths = universe.deaths;
             document.getElementById('pop').textContent = population;
             document.getElementById('births').textContent = births;
             document.getElementById('deaths').textContent = deaths;
@@ -1150,23 +1134,71 @@
                 ctx.stroke();
             }
             
-            // Cells — accumulated into a single path so the GPU gets one fill call
-            // instead of one per living cell (the old code issued N fillRects).
-            const inset = cellW > 3 ? 1 : 0;
-            ctx.fillStyle = '#58a6ff';
-            ctx.beginPath();
-            grid.forEach((_, key) => {
-                const comma = key.indexOf(',');
-                const x = +key.slice(0, comma);
-                if (x < startX || x > endX) return;
-                const y = +key.slice(comma + 1);
-                if (y < startY || y > endY) return;
-                ctx.rect(x * cellW + offsetX + inset,
-                         y * cellH + offsetY + inset,
-                         Math.max(cellW - inset * 2, 0.5),
-                         Math.max(cellH - inset * 2, 0.5));
-            });
-            ctx.fill();
+            // Cells. Both paths read the bitboard's row words directly
+            // (universe.forEachRow), so there is no per-cell "x,y" string to parse
+            // and no per-cell Map entry to walk:
+            //   >= 3px: one batched canvas path, one rect per RUN of set bits.
+            //   <  3px: one persistent ImageData, one write per visible cell.
+            // Measured in docs/PERF.md §4.1/§7.2: the ImageData path is what turns
+            // a 1M-cell frame from ~890 ms into ~18 ms.
+            if (cellW >= 3) {
+                const inset = cellW > 3 ? 1 : 0;
+                ctx.fillStyle = '#58a6ff';
+                ctx.beginPath();
+                universe.forEachRow((x0, y, word) => {
+                    if (y < startY || y > endY) return;
+                    let w = word;
+                    while (w) {
+                        // Lowest and highest set bit of this run — no per-cell loop.
+                        const tz = 31 - Math.clz32(w & -w);
+                        const lead = Math.clz32(w);
+                        const len = 32 - lead - tz;
+                        const x = x0 + tz;
+                        if (x <= endX && x + len - 1 >= startX) {
+                            const clipX0 = x < startX ? startX : x;
+                            const clipX1 = x + len - 1 > endX ? endX : x + len - 1;
+                            ctx.rect(clipX0 * cellW + offsetX + inset,
+                                     y * cellH + offsetY + inset,
+                                     Math.max((clipX1 - clipX0 + 1) * cellW - inset * 2, 0.5),
+                                     Math.max(cellH - inset * 2, 0.5));
+                        }
+                        // 32-bit runs need the guard: (1 << 32) is 1 in JS, not 0.
+                        w = len === 32 ? 0 : w & ~((((1 << len) - 1) << tz));
+                    }
+                });
+                ctx.fill();
+                lastRenderPath = 'runs';
+            } else {
+                const cw = canvas.width, ch = canvas.height;
+                if (!cellImage || cellImage.width !== cw || cellImage.height !== ch) {
+                    cellImage = ctx.createImageData(cw, ch);
+                    cellPixels = new Uint32Array(cellImage.data.buffer);
+                }
+                cellPixels.fill(BG_PIXEL);       // #0d1117, 0xAABBGGRR
+                universe.forEachRow((x0, y, word) => {
+                    let py0 = Math.round(y * cellH + offsetY);
+                    let py1 = Math.round((y + 1) * cellH + offsetY);
+                    if (py1 <= 0 || py0 >= ch) return;
+                    if (py0 < 0) py0 = 0;
+                    if (py1 > ch) py1 = ch;
+                    if (py1 <= py0) py1 = py0 + 1;
+                    for (let w = word; w; w &= w - 1) {
+                        const x = x0 + 31 - Math.clz32(w & -w);
+                        let px0 = Math.round(x * cellW + offsetX);
+                        let px1 = Math.round((x + 1) * cellW + offsetX);
+                        if (px1 <= 0 || px0 >= cw) continue;
+                        if (px0 < 0) px0 = 0;
+                        if (px1 > cw) px1 = cw;
+                        if (px1 <= px0) px1 = px0 + 1;   // sub-pixel cells stay visible
+                        for (let row = py0; row < py1; row++) {
+                            const base = row * cw;
+                            cellPixels.fill(CELL_PIXEL, base + px0, base + px1);
+                        }
+                    }
+                });
+                ctx.putImageData(cellImage, 0, 0);
+                lastRenderPath = 'imagedata';
+            }
 
             // Paste mode preview
             if (pasteMode.active && pasteMode.pattern) {
@@ -1206,8 +1238,9 @@
                 for (let i = 0; i < turbo; i++) {
                     saveHistory();
                     futureHistory = [];
-                    stepCore();
+                    universe.stepOnce();
                 }
+                generation = universe.generation;
                 updateStats();
                 render();
                 lastFrame = timestamp;
@@ -1374,24 +1407,36 @@
         }
 
         // ---------- RLE in / out, snapshots, sharing ----------
-        function ruleKey() {
-            const found = Object.keys(RULES).find(k => RULES[k] === rule);
+        function ruleKeyOf(r) {
+            const found = Object.keys(RULES).find(k => RULES[k] === r);
             if (found) return found;
-            return 'B' + rule.born.join('') + '/S' + rule.survive.join('');
+            return 'B' + r.born.join('') + '/S' + r.survive.join('');
+        }
+
+        function ruleKey() {
+            return ruleKeyOf(rule);
+        }
+
+        // Swap in a new rule, keeping the app and the simulation core in step.
+        // A rule the bitboard cannot run (B0: every dead cell of the infinite
+        // plane would be born) is refused without changing anything, so a pasted
+        // RLE header can never leave the app describing a rule it is not running.
+        function applyRule(nextRule) {
+            const key = ruleKeyOf(nextRule);
+            try {
+                universe.setRule(key);
+            } catch (err) {
+                console.warn('LifeLab: rule rejected:', key, err.message);
+                flash(key + ' cannot run on an unbounded grid (B0 fills the plane)');
+                return false;
+            }
+            rule = nextRule;
+            return true;
         }
 
         function patternBounds() {
-            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-            grid.forEach((_, key) => {
-                const comma = key.indexOf(',');
-                const x = +key.slice(0, comma);
-                const y = +key.slice(comma + 1);
-                if (x < minX) minX = x;
-                if (x > maxX) maxX = x;
-                if (y < minY) minY = y;
-                if (y > maxY) maxY = y;
-            });
-            return Number.isFinite(minX) ? { minX, minY, maxX, maxY } : null;
+            // Reads chunk words instead of parsing every "x,y" key.
+            return universe.bounds();
         }
 
         function encodeRLE() {
@@ -1409,7 +1454,10 @@
                 // the parser skip thirteen rows.
                 const parts = [];
                 for (let x = b.minX; x <= b.maxX; x++) {
-                    const tag = grid.has(x + ',' + y) ? 'o' : 'b';
+                    // Integer-keyed chunk lookup — no "x,y" string, no Map of keys.
+                    // Export is an explicit user action, so exactness is worth the
+                    // per-bounding-box-cell read here.
+                    const tag = universe.get(x, y) ? 'o' : 'b';
                     const last = parts[parts.length - 1];
                     if (last && last.tag === tag) last.count++;
                     else parts.push({ count: 1, tag });
@@ -1456,11 +1504,16 @@
             g.fillStyle = '#0d1117';
             g.fillRect(0, 0, c.width, c.height);
             g.fillStyle = '#58a6ff';
-            grid.forEach((_, key) => {
-                const comma = key.indexOf(',');
-                const x = +key.slice(0, comma) - (b.minX - pad);
-                const y = +key.slice(comma + 1) - (b.minY - pad);
-                g.fillRect(x * cell, y * cell, cell, cell);
+            // Row words -> one fillRect per run of set bits, no per-cell key parse.
+            universe.forEachRow((x0, y, word) => {
+                const row = y - (b.minY - pad);
+                let w = word;
+                while (w) {
+                    const tz = 31 - Math.clz32(w & -w);
+                    const len = 32 - Math.clz32(w) - tz;
+                    g.fillRect((x0 + tz - (b.minX - pad)) * cell, row * cell, len * cell, cell);
+                    w = len === 32 ? 0 : w & ~((((1 << len) - 1) << tz));
+                }
             });
             c.toBlob(blob => {
                 const a = document.createElement('a');
@@ -1503,7 +1556,7 @@
                 const sel = document.getElementById('rule-select');
                 if (sel) {
                     const key = String(result.rule).replace(/\s/g, '');
-                    if (RULES[key]) { sel.value = key; rule = RULES[key]; }
+                    if (RULES[key]) { sel.value = key; applyRule(RULES[key]); }
                 }
             }
             updateStats();
@@ -1567,17 +1620,18 @@
                 return true;
             },
             patterns: () => Object.values(PATTERNS).flat().map(p => p.name),
-            population: () => grid.size,
+            population: () => universe.population,
             generation: () => generation,
             bounds: patternBounds,
-            cells: () => Array.from(grid.keys()).map(k => {
-                const c = k.indexOf(',');
-                return [+k.slice(0, c), +k.slice(c + 1)];
-            }),
+            cells: () => universe.cells(),
             step: () => step(),
-            stepN(n) { for (let i = 0; i < n; i++) stepCore(); updateStats(); render(); },
-            setRule(key) { if (RULES[key]) { rule = RULES[key]; const sel = document.getElementById('rule-select'); if (sel) sel.value = key; } },
+            stepBack: () => stepBack(),
+            stepForward: () => stepForward(),
+            stepN(n) { universe.step(n); generation = universe.generation; updateStats(); render(); },
+            setRule(key) { if (RULES[key]) { applyRule(RULES[key]); const sel = document.getElementById('rule-select'); if (sel) sel.value = key; } },
             rule: () => ruleKey(),
+            // Which renderer the last render() used: 'runs' (>=3px) or 'imagedata'.
+            renderMode: () => lastRenderPath,
             encodeRLE, exportPNG, copyRLE, shareURL, zoomToFit, toggleGrid, toggleFullscreen,
             setBrush, setTurbo, brush: () => brushSize, turbo: () => turbo,
             loadRLE(text) {

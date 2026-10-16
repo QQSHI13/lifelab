@@ -3,11 +3,14 @@
  * Network-first for HTML, cache-first for assets
  */
 
-const CACHE_NAME = 'lifelab-v2';
+const CACHE_NAME = 'lifelab-v3';
 
 const CORE_ASSETS = [
   './',
-  './index.html'
+  './index.html',
+  // The simulation core is a separate classic script, so it has to be cached
+  // with the app shell or the offline page would load without it.
+  './js/bitboard.js'
 ];
 
 const PATTERN_FILES = [

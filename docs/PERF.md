@@ -637,3 +637,124 @@ worth its weight where that gap matters (big structured patterns, deep jumps).
 No existing file was modified — `index.html`, `patterns/*.json` and
 `tools/verify-patterns.mjs` are untouched — and nothing was installed inside the repo
 (the npm scratch directory is `/tmp/opencode/hl-bench`).
+
+---
+
+## 10. After integration (measured)
+
+The recommendations above are now shipped: `js/bitboard.js` is the app's **only**
+simulation core (§7.1), `render()` has the two row-word paths (§7.2), and the undo
+history snapshots a bitboard instead of the whole `Map`. HashLife fast-forward (§7.3) was
+**not** vendored — it is a "jump N generations" affordance, not a core, and adding a third
+engine for it was out of scope.
+
+Measured with the same methodology as §1: Node v26.12.0, warm-up pass, then best of 3; the
+Map core capped at 6 s per run. "Before" is `MapCore` from `tools/bench-common.mjs` (the
+old core, replicated exactly and re-run on the same box at the same time, so the two
+columns are comparable — the absolute numbers differ from §2.1 by up to ~30 %, as the
+honesty note predicts). "After" is the shipped `index.html` + `js/bitboard.js`, loaded
+through the stub DOM in `js/app.check.mjs`, so it is the real app code and not a copy.
+Reproduce:
+
+```bash
+node tools/bench-after.mjs
+node js/bitboard.check.mjs && node js/app.check.mjs && node tools/verify-patterns.mjs
+```
+
+### 10.1 Stepper (the requested workloads)
+
+| workload | live | gens | before: Map core | after: best | after: median | speed-up |
+|---|---:|---:|---:|---:|---:|---:|
+| r-pentomino | 5 | 1,103 | 550 ms | **88.3 ms** | 97.2 ms | 6.2× |
+| acorn | 7 | 5,206 | 6.00 s @4,225g *(capped)* | **872 ms** | 899 ms | > 8× |
+| random 100×100 soup | 4,931 | 500 | 2.20 s | **73.9 ms** | 77.3 ms | 29.7× |
+| random 450×450 soup | 101,075 | 100 | 6.01 s @29g *(capped)* | **109 ms** | 114 ms | > 190× |
+
+"after" times the app's own `LifeLab.stepN(n)` — `universe.step(n)` plus one trailing
+`updateStats()`/`render()`, i.e. the same hot path a fast-forward uses. Three full runs of
+`tools/bench-after.mjs` (plus two `--quick` runs) put the r-pentomino at 80–88 ms, the 5k
+soup at 74–86 ms and the 100k soup at 96–111 ms, so the spread is the ±30 % the §1 honesty
+note predicts.
+
+The r-pentomino's 88 ms lands on this box's §2.1 bitboard figure (73 ms), and the 100k
+soup's ~1.1 ms per generation lands on §2.2's ~1.2 ms, so the port did not lose anything
+against the reference implementation it was ported from.
+
+### 10.2 The full per-generation path, now that history is cheap
+
+`LifeLab.step()` — snapshot + stepper + stats + `render()`'s CPU pass (the stub canvas
+does no rasterisation, exactly the §4.2b caveat) — per generation:
+
+| workload | gens | total | ms/generation |
+|---|---:|---:|---:|
+| r-pentomino | 1,103 | 280 ms | 0.25 |
+| acorn | 5,206 | 2.39 s | 0.46 |
+| random 100×100 soup | 500 | 331 ms | 0.66 |
+| random 450×450 soup | 100 | 250 ms | 2.50 |
+
+Compare §4.2b: 3.68 ms/generation at 10k cells and 213 ms/generation at 100k. The 100k
+soup now spends 2.50 ms per generation on *everything including the undo snapshot and the
+render walk*.
+
+### 10.3 Undo snapshots at ~100k cells (101,075 live cells)
+
+| what | best of 5 |
+|---|---:|
+| before: `new Map(grid)` over 101k string keys | 25.2 ms |
+| after: `universe.clone()` — exactly what `saveHistory()` does | **0.29 ms** *(86× cheaper)* |
+| after: app `step()`, snapshot + stepper + stats + render | 2.48 ms |
+| after: app `stepN(1)`, no snapshot or history | 2.19 ms |
+
+The last two rows differ by 0.29 ms, which is the direct `clone()` measurement — the
+substitution reconciles, so the snapshot really is that share of a generation. Across runs
+the map clone measured 16–31 ms and the bitboard clone 0.13–0.29 ms (86–235× cheaper).
+
+**Choice: `clone()`, not an incremental diff of live cells.** `clone()` copies one
+`Uint32Array(32)` per *occupied chunk* (~128 B; ~26 KB for a 100k-cell soup) instead of one
+entry per live cell, so it is ~90× cheaper here, and — the deciding factor — it needs no
+change at the eight places that mutate the universe (brush stamp, drag line, random fill,
+pattern paste, RLE load, clear, step, turbo). A diff-based history would have to be
+maintained at every one of those sites and would silently corrupt the undo stack the first
+time someone adds another edit path. The 50-step cap holds 50 clones: ~1.3 MB at 100k
+cells, ~13 MB at 1M (bounded by occupied chunks, not population).
+`stepBack()`/`stepForward()` restore a clone and the app's generation counter, and the
+check suite asserts both directions.
+
+### 10.4 Renderer
+
+The per-cell `"x,y"` parse is gone; both paths read `universe.forEachRow()` row words.
+Verified by `js/app.check.mjs` rather than by a screenshot: a 3-cell blinker at 10 px
+emits **1** `ctx.rect` (one run) where the old code emitted 3, the ImageData path emits
+**0** rects and exactly **1** `putImageData`, and a 3-cell blinker at 1 px writes exactly
+**3** pixels into the buffer. The threshold is asserted at 3 px: 3.00 px → runs, 2.99 px →
+ImageData. The §4.1 browser numbers (`887 ms → 17.5 ms` at 1M cells, 1 px) could not be
+re-measured here without a browser, which the owner has asked not to use; the CPU-side
+claim that survives is this: the path is O(visible cells) with no string parsing, and the
+rasterisation cost is the one §4.1 measured for the identical implementation (`B`,
+`ImageData`).
+
+### 10.5 Checks
+
+| suite | result |
+|---|---|
+| `node js/bitboard.check.mjs` | 37/37 reference checks + 1/1 exhaustive counter check + 12/12 port-surface checks |
+| `node js/app.check.mjs` | **72/72** (blinker/block/glider/r-pentomino/diehard/acorn/gosper, 3 library patterns, RLE round-trips, brush, undo/redo, both render paths, rules, stats, `#rle=` links) |
+| `node tools/verify-patterns.mjs` | 25/25 patterns, unchanged |
+
+All three run in `.github/workflows/check.yml` on push and pull request. `tools/verify-patterns.mjs`,
+`patterns/*.json`, the responsive layout, the service worker and the theme link were left
+alone (the SW only gained `./js/bitboard.js` in its precache list, with a cache-name bump
+to `lifelab-v3`).
+
+### 10.6 What was left on the table
+
+* **HashLife fast-forward** (§7.3/§7.4) — not vendored; the bitboard's `step(n)` is now the
+  jump button, and at 100k cells a 1,000-generation jump is ~1 s vs HashLife's ~13 ms. The
+  library is only worth its 1–15 MB where big structured patterns are jumped deep.
+* **Dirty-rectangle rendering** (§6) — the zoomed-in case still redraws the whole canvas.
+* **WebGL** — still unvalidated (no GPU), as §4.3 and §7.2 say.
+* **`universe.forEachRow()` walks the whole universe**, not the viewport. That is
+  O(occupied rows) (~32 per chunk) and was not measurable above the noise, but a
+  viewport-limited `forEachRow` is the obvious next lever for a 1M-cell soup scrolled
+  far away from most of its cells.
+

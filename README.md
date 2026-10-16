@@ -10,6 +10,7 @@ Conway's Game of Life — an advanced cellular automaton simulator with a compre
 
 ### Core Simulation
 - **♾️ Unbounded grid** — sparse universe with smooth zoom-to-cursor and pan
+- **🧮 Chunked bitboard core** — 32×32-cell bitboards, bit-parallel neighbour counting (`js/bitboard.js`)
 - **⏯️ Play/Pause** — Smooth animation loop at your preferred speed
 - **⏭️ Step Forward/Back** — Navigate through generations frame by frame
 - **🔄 Reset/Clear** — Start fresh with random seed or clear completely
@@ -74,8 +75,31 @@ LifeLab.place('Gosper Gun')                            // or a library pattern b
 LifeLab.stepN(1103)                                    // fast-forward, no rendering
 LifeLab.population()  LifeLab.generation()  LifeLab.cells()
 LifeLab.encodeRLE()   LifeLab.loadRLE(rleText)
+LifeLab.stepBack()    LifeLab.stepForward()             // walk the undo history
+LifeLab.renderMode()                                   // 'runs' or 'imagedata'
 LifeLab.setBrush(3)   LifeLab.setTurbo(16)  LifeLab.setRule('B36/S23')
 ```
+
+## ⚡ Speed
+
+The simulation runs on a **chunked bitboard** (`js/bitboard.js`) — 32×32 cells per
+`Uint32Array(32)` chunk, all eight neighbour planes summed bit-sliced, so a generation
+costs time proportional to the *occupied area* rather than to the population. Rendering
+picks a path per frame: runs of set bits drawn as one batched canvas path when cells are
+≥ 3 px, and one `putImageData` over a persistent buffer when they are smaller.
+
+| Workload (warm-up + best of 3, Node) | Before (Map core) | After (bitboard) |
+|---|---|---|
+| R-pentomino, 1103 generations | 550 ms | **88 ms** |
+| Acorn, 5206 generations | > 6 s (capped) | **0.87 s** |
+| Random 100×100 soup (~5k cells), 500 generations | 2.20 s | **74 ms** |
+| Random 450×450 soup (~100k cells), 100 generations | > 6 s (capped at 29 generations) | **109 ms** |
+| Full generation incl. undo snapshot + render, ~100k cells | 213 ms | **2.5 ms** |
+| Undo snapshot at ~100k cells | 25 ms | **0.29 ms** |
+| 1 M-cell frame, zoomed out, in browser | 887 ms | **17.5 ms** (ImageData path, from §4.1) |
+
+Full methodology, ablations and caveats: [`docs/PERF.md`](docs/PERF.md) (§10 is the
+after-integration measurement).
 
 ## ✅ Verified behaviour
 
@@ -87,20 +111,15 @@ The simulation is checked against known results (not just "it looks alive"):
 | Blinker | vertical ⇄ horizontal, period 2 | ✅ |
 | Glider, 4 generations | same shape, translated (1,1) | ✅ |
 | **R-pentomino, 1103 generations** | **116 cells** | ✅ |
+| Diehard | dies at generation 130 | ✅ |
+| Acorn, 5206 generations | 633 cells | ✅ |
 | RLE round-trip (glider, pulsar) | identical shape | ✅ |
 | RLE from other tools | parses (`bo$2bo$3o!` → 5 cells) | ✅ |
 
-Performance vs. the previous implementation, measured in-browser on the same machine
-(1,000–2,000 generations, warm-up + best of three):
-
-| Workload | Before | After |
-|---|---|---|
-| Blinker (render-bound) | 197 ms | **173 ms** |
-| R-pentomino (large, 1103 gens) | 6,699 ms | **1,111 ms** (6× faster) |
-
-The speed-up comes from tallying neighbour counts once per cell instead of re-evaluating
-each cell up to nine times, and from batching every living cell into a single canvas path
-rather than one `fillRect` per cell.
+`node js/bitboard.check.mjs` (50 checks: 37 reference + 1 exhaustive counter + 12 port),
+`node js/app.check.mjs` (72 checks, real `index.html` under a stub DOM, no browser) and
+`node tools/verify-patterns.mjs` (25/25 patterns) all run in CI on every push and pull
+request.
 
 ---
 
