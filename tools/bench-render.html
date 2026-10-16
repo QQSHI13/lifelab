@@ -1,0 +1,302 @@
+<!doctype html>
+<!--
+  Renderer shoot-out for LifeLab. Served from a scratch copy of the site by
+  tools/bench-render.mjs; nothing here is shipped.
+
+  Four ways to paint the same cells:
+
+    A  canvas-2D batched path    -- what index.html does today (one ctx.rect per
+                                    visible cell, a single fill() call)
+    B  ImageData at canvas res   -- one Uint32 write per screen pixel, then
+                                    putImageData; fills whole cell blocks
+    C  WebGL points              -- one draw call of N gl_POINTS, size via
+                                    gl_PointSize, all clipping done by the GPU
+    D  offscreen ImageData at 1px/cell + scaled drawImage
+                                 -- paint the pattern at one pixel per cell on an
+                                    offscreen canvas, then let the GPU scale it
+                                    up (imageSmoothingEnabled = false)
+
+  The cell set is the same deterministic 50%-density soup used by the Node
+  benchmarks (same mulberry32 seed), so "1M cells" means the same thing in both.
+-->
+<meta charset="utf-8">
+<title>LifeLab render bench</title>
+<style>
+  html,body{margin:0;background:#000}
+  /* WebGL and 2D cannot share one canvas, so each renderer gets its own and
+     only one is visible at a time. Timing does not depend on which is shown. */
+  canvas{position:absolute;top:0;left:0;display:block}
+  canvas.hidden{visibility:hidden}
+</style>
+<canvas id="c2d" width="1200" height="800"></canvas>
+<canvas id="cgl" width="1200" height="800" class="hidden"></canvas>
+<script>
+const W = 1200, H = 800;
+const canvas = document.getElementById('c2d');
+const glCanvas = document.getElementById('cgl');
+const ctx = canvas.getContext('2d', { alpha: false });
+ctx.imageSmoothingEnabled = false;
+
+const BG = '#0d1117', FG = '#58a6ff';
+const BG_U32 = 0xff17110d;              // 0xAABBGGRR
+const FG_U32 = 0xffffa658;
+
+// ---- deterministic soup (mirrors tools/bench-common.mjs randomSoup) --------
+function mulberry32(seed) {
+  let a = seed >>> 0;
+  return function () {
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+const state = { side: 0, n: 0, xs: null, ys: null, pos: null };
+function buildSoup(target, density = 0.5) {
+  const side = Math.ceil(Math.sqrt(target / density));
+  const rnd = mulberry32(12345);
+  const xs = [], ys = [];
+  for (let y = 0; y < side; y++) for (let x = 0; x < side; x++) if (rnd() < density) { xs.push(x); ys.push(y); }
+  state.side = side; state.n = xs.length;
+  state.xs = Int32Array.from(xs); state.ys = Int32Array.from(ys);
+  // interleaved positions for WebGL
+  const pos = new Float32Array(state.n * 2);
+  for (let i = 0; i < state.n; i++) { pos[2 * i] = xs[i]; pos[2 * i + 1] = ys[i]; }
+  state.pos = pos;
+  return bytesFor();
+}
+function bytesFor() { return state.n * 2 * 4; }
+
+// ---- A: batched canvas path (index.html's renderer) ------------------------
+function drawPath(ox, oy, cw, ch) {
+  ctx.fillStyle = BG;
+  ctx.fillRect(0, 0, W, H);
+  const startX = Math.floor(-ox / cw), startY = Math.floor(-oy / ch);
+  const endX = startX + Math.ceil(W / cw) + 1, endY = startY + Math.ceil(H / ch) + 1;
+  if (cw >= 4) {                    // grid lines, as the app draws them
+    ctx.strokeStyle = '#21262d'; ctx.lineWidth = 0.5; ctx.beginPath();
+    for (let x = startX; x <= endX; x++) { const px = Math.round(x * cw + ox) + 0.5; ctx.moveTo(px, 0); ctx.lineTo(px, H); }
+    for (let y = startY; y <= endY; y++) { const py = Math.round(y * ch + oy) + 0.5; ctx.moveTo(0, py); ctx.lineTo(W, py); }
+    ctx.stroke();
+  }
+  const inset = cw > 3 ? 1 : 0;
+  ctx.fillStyle = FG;
+  ctx.beginPath();
+  const { xs, ys, n } = state;
+  let visible = 0;
+  for (let i = 0; i < n; i++) {
+    const x = xs[i]; if (x < startX || x > endX) continue;
+    const y = ys[i]; if (y < startY || y > endY) continue;
+    visible++;
+    ctx.rect(x * cw + ox + inset, y * ch + oy + inset, Math.max(cw - inset * 2, 0.5), Math.max(ch - inset * 2, 0.5));
+  }
+  ctx.fill();
+  return visible;
+}
+
+// ---- B: ImageData at canvas resolution ------------------------------------
+let img = null, buf = null;
+function setupB() { img = ctx.createImageData(W, H); buf = new Uint32Array(img.data.buffer); }
+function drawImageData(ox, oy, cw, ch) {
+  buf.fill(BG_U32);
+  const { xs, ys, n } = state;
+  let visible = 0;
+  if (cw >= 2) {
+    const iw = Math.floor(cw) - (cw > 3 ? 1 : 0), ih = Math.floor(ch) - (ch > 3 ? 1 : 0);
+    for (let i = 0; i < n; i++) {
+      const px = Math.round(xs[i] * cw + ox) + 1, py = Math.round(ys[i] * ch + oy) + 1;
+      if (px < 0 || py < 0 || px + iw > W || py + ih > H) continue;
+      visible++;
+      for (let r = 0; r < ih; r++) buf.fill(FG_U32, (py + r) * W + px, (py + r) * W + px + iw);
+    }
+  } else {
+    for (let i = 0; i < n; i++) {
+      const px = Math.round(xs[i] * cw + ox), py = Math.round(ys[i] * ch + oy);
+      if (px < 0 || py < 0 || px >= W || py >= H) continue;
+      visible++;
+      buf[py * W + px] = FG_U32;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  return visible;
+}
+
+// ---- D: one pixel per cell offscreen, GPU-scaled --------------------------
+const off = document.createElement('canvas');
+const offCtx = off.getContext('2d', { alpha: false });
+let offImg = null, offBuf = null, offW = 0, offH = 0;
+function setupD() {
+  offW = Math.ceil(W / 1) + 2; offH = Math.ceil(H / 1) + 2;   // sized for the 1px/cell case
+  off.width = offW; off.height = offH;
+  offImg = offCtx.createImageData(offW, offH); offBuf = new Uint32Array(offImg.data.buffer);
+  offCtx.imageSmoothingEnabled = false;
+}
+function drawOffscreen(ox, oy, cw, ch) {
+  const vw = Math.min(offW, Math.ceil(W / cw) + 2), vh = Math.min(offH, Math.ceil(H / ch) + 2);
+  const cellsToFill = vw * vh;
+  offBuf.fill(BG_U32, 0, cellsToFill);
+  const { xs, ys, n } = state;
+  let visible = 0;
+  for (let i = 0; i < n; i++) {
+    const px = Math.round(xs[i] - (-ox / cw)), py = Math.round(ys[i] - (-oy / ch));
+    if (px < 0 || py < 0 || px >= vw || py >= vh) continue;
+    visible++;
+    offBuf[py * offW + px] = FG_U32;
+  }
+  offCtx.putImageData(offImg, 0, 0);
+  ctx.fillStyle = BG; ctx.fillRect(0, 0, W, H);
+  // offscreen pixel (0,0) is the cell at world (-ox/cw, -oy/ch), whose screen
+  // position is exactly (0,0), so the scaled image goes down at the origin.
+  ctx.drawImage(off, 0, 0, vw, vh, 0, 0, vw * cw, vh * ch);
+  return visible;
+}
+
+// ---- C: WebGL points ------------------------------------------------------
+// preserveDrawingBuffer must be off for honest timings (it forces a copy per
+// frame); the --shots flag of the driver cannot be honoured with it off, so a
+// screenshot run trades accuracy for pictures.
+const KEEP_BUFFER = new URL(location.href).searchParams.get('preserve') === '1';
+const gl = glCanvas.getContext('webgl', { alpha: false, antialias: false, preserveDrawingBuffer: KEEP_BUFFER });
+let glInfo = { ok: false };
+let glProgram = null, glLoc = {}, glBuf = null;
+function setupGL() {
+  if (!gl) return;
+  const vs = `
+    attribute vec2 a_pos;
+    uniform vec2 u_res; uniform vec2 u_scale; uniform vec2 u_offset; uniform float u_size;
+    void main() {
+      vec2 p = a_pos * u_scale + u_offset + vec2(u_size * 0.5);
+      vec2 clip = vec2((p.x / u_res.x) * 2.0 - 1.0, 1.0 - (p.y / u_res.y) * 2.0);
+      gl_Position = vec4(clip, 0.0, 1.0);
+      gl_PointSize = u_size;
+    }`;
+  const fs = `
+    precision mediump float;
+    uniform vec4 u_color;
+    void main() { gl_FragColor = u_color; }`;
+  const mk = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; };
+  glProgram = gl.createProgram();
+  gl.attachShader(glProgram, mk(gl.VERTEX_SHADER, vs));
+  gl.attachShader(glProgram, mk(gl.FRAGMENT_SHADER, fs));
+  gl.linkProgram(glProgram);
+  if (!gl.getProgramParameter(glProgram, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(glProgram));
+  gl.useProgram(glProgram);
+  glLoc.pos = gl.getAttribLocation(glProgram, 'a_pos');
+  for (const u of ['u_res', 'u_scale', 'u_offset', 'u_size', 'u_color']) glLoc[u] = gl.getUniformLocation(glProgram, u);
+  glBuf = gl.createBuffer();
+  gl.uniform2f(glLoc.u_res, W, H);
+  gl.uniform4f(glLoc.u_color, 88 / 255, 166 / 255, 255 / 255, 1);
+  gl.viewport(0, 0, W, H);
+  const range = gl.getParameter(gl.ALIASED_POINT_SIZE_RANGE);
+  const dbg = gl.getExtension('WEBGL_debug_renderer_info');
+  const renderer = dbg ? String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)) : String(gl.getParameter(gl.RENDERER));
+  glInfo = {
+    ok: true,
+    renderer,
+    software: /swiftshader|software|llvmpipe|mesa offscreen/i.test(renderer),
+    pointSizeRange: [range[0], range[1]],
+  };
+}
+function uploadPoints() {
+  gl.bindBuffer(gl.ARRAY_BUFFER, glBuf);
+  gl.bufferData(gl.ARRAY_BUFFER, state.pos, gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(glLoc.pos);
+  gl.vertexAttribPointer(glLoc.pos, 2, gl.FLOAT, false, 0, 0);
+}
+function drawGLPoints(ox, oy, cw, ch) {
+  gl.clearColor(0.051, 0.067, 0.09, 1);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.uniform2f(glLoc.u_scale, cw, ch);
+  gl.uniform2f(glLoc.u_offset, ox, oy);
+  gl.uniform1f(glLoc.u_size, cw > 3 ? cw - 1 : Math.max(cw, 1));
+  gl.drawArrays(gl.POINTS, 0, state.n);
+  return state.n;
+}
+function syncGL() { const px = new Uint8Array(4); gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); }
+function countVisible(ox, oy, cw, ch) {
+  const startX = -ox / cw, startY = -oy / ch, endX = startX + W / cw, endY = startY + H / ch;
+  const { xs, ys, n } = state;
+  let v = 0;
+  for (let i = 0; i < n; i++) if (xs[i] >= startX && xs[i] <= endX && ys[i] >= startY && ys[i] <= endY) v++;
+  return v;
+}
+function sync2d() { ctx.getImageData(0, 0, 1, 1); }
+
+// ---- measurement ----------------------------------------------------------
+function measure(fn, sync, frames) {
+  for (let i = 0; i < 3; i++) { fn(); sync(); }              // warm-up
+  const t0 = performance.now();
+  for (let i = 0; i < frames; i++) fn();
+  sync();                                                    // include GPU work
+  const per = (performance.now() - t0) / frames;
+  // median of individual (unsynced) draws, to see CPU-side spread
+  const ts = [];
+  for (let i = 0; i < Math.min(frames, 12); i++) { const a = performance.now(); fn(); ts.push(performance.now() - a); }
+  sync();
+  ts.sort((a, b) => a - b);
+  return { perFrame: per, median: ts[ts.length >> 1], best: ts[0] };
+}
+
+function runCase(strategy, zoomName, cw) {
+  const ch = cw;
+  const ox = W / 2 - (state.side / 2) * cw;
+  const oy = H / 2 - (state.side / 2) * ch;
+  let fn, sync, drawn = 0;
+  if (strategy === 'A') { fn = () => drawPath(ox, oy, cw, ch); sync = sync2d; }
+  else if (strategy === 'B') { fn = () => drawImageData(ox, oy, cw, ch); sync = sync2d; }
+  else if (strategy === 'D') { fn = () => drawOffscreen(ox, oy, cw, ch); sync = sync2d; }
+  else { fn = () => drawGLPoints(ox, oy, cw, ch); sync = syncGL; drawn = countVisible(ox, oy, cw, ch); }
+  let visible = 0;
+  try { visible = fn(); } catch (e) { return { error: String(e) }; }
+  let frames = 15;
+  try {
+    const probe = performance.now(); fn(); sync();
+    if (performance.now() - probe > 120) frames = 3;
+  } catch (e) { return { error: String(e) }; }
+  let r;
+  try { r = measure(fn, sync, frames); } catch (e) { return { error: String(e) }; }
+  return {
+    strategy, zoom: zoomName, cellPx: cw, live: state.n, visible,
+    submitted: strategy === 'C' ? state.n : null, drawn,
+    perFrame: +r.perFrame.toFixed(2), median: +r.median.toFixed(2), best: +r.best.toFixed(2), frames,
+    fps: +(1000 / r.perFrame).toFixed(1),
+  };
+}
+
+// ---- driver ---------------------------------------------------------------
+window.__bench = {
+  init() {
+    setupB(); setupD(); setupGL();
+    return { gl: glInfo };
+  },
+  build(target) {
+    const bytes = buildSoup(target);
+    if (glInfo.ok) uploadPoints();
+    return { live: state.n, side: state.side, mb: +(bytes / 1048576).toFixed(1) };
+  },
+  runAll(zoomLevels) {
+    const out = [];
+    for (const z of zoomLevels) {
+      for (const s of ['A', 'B', 'C', 'D']) {
+        if (s === 'C' && !glInfo.ok) continue;
+        const r = runCase(s, z.name, z.cw);
+        if (!r.error) out.push(r);
+      }
+    }
+    return out;
+  },
+  uploadCost(samples = 20) {
+    const t0 = performance.now();
+    for (let i = 0; i < samples; i++) uploadPoints();
+    syncGL();
+    return +((performance.now() - t0) / samples).toFixed(2);
+  },
+  pointSizeRange() { return glInfo; },
+  show(strategy) {
+    const twoD = strategy !== 'C';
+    canvas.className = twoD ? '' : 'hidden';
+    glCanvas.className = twoD ? 'hidden' : '';
+    return strategy;
+  },
+};
+</script>
